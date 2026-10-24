@@ -10,9 +10,8 @@ review and judgment in the interactive tree.
 
 **Work in progress.** This is an experimental project under active development.
 Grading and evidence checks can miss errors; the winning answer is not guaranteed
-to be correct. Grudge Match, evidence checking and uploads are currently on the
-[`grudge-match` development branch](https://github.com/dyannantuonojr/arena-skill-gpt/tree/grudge-match)
-and [draft PR #1](https://github.com/dyannantuonojr/arena-skill-gpt/pull/1).
+to be correct. Arena, Grudge Match, evidence checking and supporting-document
+uploads are included together on the default `main` branch.
 
 | Choose a mode | How it helps answer your question | Jobs before retries |
 | --- | --- | --- |
@@ -24,9 +23,9 @@ Rubric scores compare the answers; they are not accuracy percentages.
 
 ## Get started in the ChatGPT interface
 
-1. For the current development version, clone the feature branch:
-   `git clone --branch grudge-match https://github.com/dyannantuonojr/arena-skill-gpt.git`.
-2. Follow [personal plugin setup](https://github.com/dyannantuonojr/arena-skill-gpt/blob/grudge-match/docs/PERSONAL_PLUGIN.md) to install the runtime,
+1. Clone the repository's default branch:
+   `git clone https://github.com/dyannantuonojr/arena-skill-gpt.git`.
+2. Follow [personal plugin setup](docs/PERSONAL_PLUGIN.md) to install the runtime,
    sign into Codex and connect it to ChatGPT. Cloning alone does not install or
    connect a ChatGPT plugin.
 3. Once connected, ask **“Open Arena”** or **“Open Grudge Match”**. Select a mode
@@ -44,9 +43,50 @@ usage limits. You do not need a separate model API key for answer generation.
 The standalone local app below currently provides Arena; use the personal plugin
 for the shared Arena/Grudge Match interface and document uploads.
 
-## Arena on the default branch
+## How Arena selects an answer
 
-The default branch runs 16 fixed answers through a bracket. Winners advance unchanged, and both finalists receive implementation guides. The legacy evolving engine remains available only through an explicit command-line option; it is not a current UI mode. See [legacy compatibility details](docs/LEGACY_EVOLVING_MODE.md).
+This is a GPT/Codex port of [Jake Schincariol's Arena](https://github.com/Jakeschincariol/arena-skill), with **16 fixed answers, four rounds, and required implementation outputs for both finalists**. This is an independent MIT-licensed fork, not an official OpenAI product.
+
+Each competitor gets the same task and a distinct strategy card. The 16 submitted answers are frozen, then independent judges compare pairs. Winners advance unchanged through fixed branches. The Python engine validates scores and decides who advances. An optional blind comparison checks the selected answer against a previous answer.
+
+**The count is explicit:** 16 initial answers + 15 judges = **31 core jobs**, then two required finalist implementation packages = **33 worker jobs total**. This does not mean 16 simultaneous agents. Retries and coordinator/tool overhead add usage.
+
+The current UI uses fixed-answer selection. The engine also retains an advanced
+legacy command-line mode for compatibility; see [legacy evolving mode](docs/LEGACY_EVOLVING_MODE.md).
+
+## Grudge Match
+
+A smaller workflow is available in the same personal plugin. Open Arena and select the **Grudge Match** toggle above the question field (or
+ask **“Open Grudge Match”** directly), enter your question above the optional
+grading guidance, and click
+**Start Grudge Match** only when ready.
+
+1. A normal original answer.
+2. An independent peer review of that answer.
+3. A standalone synthesis incorporating supported review findings.
+4. An evidence checker audits claims and citations in the **original, peer review,
+   and synthesis**, producing a readable source-linked report.
+5. An independent judge compares anonymously labelled copies of the original
+   and synthesis under the identical frozen rubric.
+6. **Only the winner** receives an implementation guide and native Archify diagram.
+
+**Six worker jobs before retries.** Original and synthesized answers cite material
+factual claims. Unverified claims remain labelled. Either original or synthesis can win.
+Each output is readable from the workflow tree. The comparison shows criterion
+scores and weighted totals; these are rubric scores, not measured accuracy
+percentages. Opening the UI starts no workers. Grudge Match and Arena share the
+owner's account and allow one active workflow at a time. Existing Arena remains
+16 answers and 33 worker jobs. See [Grudge Match details](docs/GRUDGE_MATCH.md).
+
+## Supporting documents
+
+In the Arena/Grudge Match plugin UI, use **Attach files** beneath the question to
+supply context or ask about an XLSX/CSV spreadsheet, PDF, Word DOCX, TXT or Markdown
+file. Preview it before starting. Each worker receives the same frozen copy;
+Grudge evidence findings can cite sheet/cell ranges, pages, paragraphs or lines.
+Uploads do not start a run or add model jobs. Limits: 8 files, 10 MiB per file,
+20 MiB total; encrypted/scanned-only PDFs and oversized extractions are rejected.
+[Formats, citations, limits and storage](docs/SUPPORTING_DOCUMENTS.md).
 
 ## Run the Arena app
 

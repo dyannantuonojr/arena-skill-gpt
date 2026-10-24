@@ -2,8 +2,10 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "arena-skill-gpt",
   "version": "5.0.0",
-  "description": "Personal Arena interface with fixed-answer judging and required Archify finalist guides.",
-  "author": {"name": "dyannantuonojr"},
+  "description": "Arena (33 jobs) and Grudge Match (6 jobs), with supporting-file uploads, source-linked evidence checks, answer citations, independent scoring and Archify guides.",
+  "author": {
+    "name": "dyannantuonojr"
+  },
   "homepage": "https://github.com/dyannantuonojr/arena-skill-gpt",
   "repository": "https://github.com/dyannantuonojr/arena-skill-gpt",
   "license": "MIT"

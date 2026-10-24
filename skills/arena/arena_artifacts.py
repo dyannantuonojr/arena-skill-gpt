@@ -21,6 +21,9 @@ NATIVE_TYPES = frozenset(('workflow', 'architecture', 'sequence', 'dataflow',
 def finalists(state):
     """Return both final-round entrants, a singleton, or no entrants yet."""
     agents = state.get('agents', {})
+    if state.get('workflow') == 'grudge':
+        champion = state.get('champion')
+        return [champion] if champion in agents else []
     if len(agents) == 1:
         return list(agents)
     rounds = state.get('rounds', [])
