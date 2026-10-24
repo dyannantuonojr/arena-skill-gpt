@@ -1,16 +1,18 @@
 # Arena 16 for GPT and Codex
 
-A GPT/Codex port of [Jake Schincariol's Arena](https://github.com/Jakeschincariol/arena-skill), with **16 fixed answers, four rounds, and 31 agent jobs by default**. This is an independent MIT-licensed fork, not an official OpenAI product.
+A GPT/Codex port of [Jake Schincariol's Arena](https://github.com/Jakeschincariol/arena-skill), with **16 fixed answers, four rounds, and required implementation outputs for both finalists**. This is an independent MIT-licensed fork, not an official OpenAI product.
 
 Each competitor gets the same task and a distinct strategy card. The 16 submitted answers are frozen, then independent judges compare pairs. Winners advance unchanged through fixed branches. The Python engine validates scores and decides who advances. An optional blind comparison checks the selected answer against a previous answer.
 
-**The count is explicit:** 16 initial answer jobs + 15 judge jobs = 31 total. It is not 16 total jobs or 16 simultaneous agents.
+**The count is explicit:** 16 initial answers + 15 judges = **31 core jobs**, then two required finalist implementation packages = **33 worker jobs total**. This does not mean 16 simultaneous agents. Retries and coordinator/tool overhead add usage.
 
-The original critique-and-revision process remains available with explicit `--mode evolve`: 91 jobs for 16 competitors. Existing saved runs without a mode keep their original evolving behavior.
+The original critique-and-revision process remains available with explicit `--mode evolve`: 91 core jobs plus two required packages = 93 worker jobs. Existing saved runs without a mode keep their original evolving behavior.
 
 ## Requirements and compatibility
 
-Use a ChatGPT/Codex environment with **Python 3.8+, shared writable files, and tools that create independent subagents**. No Python dependencies, API keys, or external model service are required by this skill. Normal model usage limits and subscription costs still apply.
+Use a ChatGPT/Codex environment with **Python 3.8+, shared writable files, independent subagent tools, and Archify with Node and browser validation**. Python bookkeeping and the viewer use only the standard library; complete delivery also requires the local Archify toolchain. No API keys or external model service are required by this skill. Normal model usage limits still apply.
+
+Install Archify using its [official instructions](https://github.com/tt-a1i/archify). If required rendering/validation tools are missing, Arena reports incomplete delivery rather than omitting the diagrams.
 
 A plain ChatGPT chat without these tools cannot run the independent-agent tournament. Uploading the prompt alone does not enable agents. The skill checks capabilities and stops honestly rather than simulating independent workers. Installing a plugin also does not grant missing runtime capabilities.
 
@@ -59,9 +61,9 @@ In ChatGPT hosts that expose installed skills, select Arena with `@`. In Codex u
 
 | Option | Behavior |
 | --- | --- |
-| no flags | 16 fixed answers, four rounds, 31 jobs |
+| no flags | 16 fixed answers, 31 core + 2 required package jobs = 33 total |
 | `--mode select` | Default: judge pairs and advance unchanged answers |
-| `--mode evolve` | Original critique/revision process: 91 jobs |
+| `--mode evolve` | Original critique/revision process: 91 core + 2 packages = 93 |
 | `--agents N` | 1-16 competitors; larger values are rejected |
 | `--quick` | Alias for 16, retained from upstream |
 | `--seed S` | Reproducible cards and pairings, not reproducible model answers |
@@ -69,9 +71,44 @@ In ChatGPT hosts that expose installed skills, select Arena with `@`. In Codex u
 
 Sixteen competitors are not sixteen simultaneous workers. The coordinator reserves its own slot, waits for workers, and releases them when required by the host. Every job receives a fresh context. It never substitutes itself for an independent judge.
 
+## Required output window
+
+Every original answer is available from both the answer list and bracket. Finalists
+also have **Implementation** and **Archify** tabs. Assumptions and review scope stay
+inside closed details sections, preserving original answer bytes.
+
+Both finalists require a package after judging: `implementation.md`, `candidate.json`,
+`diagram.html` and the actual passing Archify summary at
+`review/diagram.finalize-summary.json`. The guide gives concrete implementation steps
+and acceptance checks; the diagram accompanies that plan. It does not replace the
+original answer or earn judging points for appearance.
+
+The engine validates source/package hashes and reported finalize gates, then accepts
+with `accept-artifact`. Missing, failed or stale packages block completion. Receipts
+bind files and reported rendering checks; they do not prove diagram meaning.
+
+```bash
+python skills/arena/bracket.py accept-artifact a004 --dir "/absolute/path/to/run"
+python skills/arena/bracket.py accept-artifact a014 --dir "/absolute/path/to/run"
+python skills/arena/bracket.py view --dir "/absolute/path/to/run"
+```
+
+Use the actual finalist IDs. The coordinator generates the files before accepting
+them. The exporter writes `RUN/viewer/index.html` by default and protects original
+answers/state from overwrite. It works offline; for live refresh serve the folder:
+
+```bash
+python -m http.server 8766 --bind 127.0.0.1 --directory "/absolute/path/to/run/viewer"
+```
+
+Open the loopback URL in the host's output/browser panel. Refresh exports after
+rounds and package acceptance. Unreadable answers, modified artifacts or missing
+copied diagrams cannot be reported as complete delivery. Older saved runs retain
+their historical requirements; all new runs require these outputs.
+
 ## Cost and records
 
-A default run is **16 initial drafts + 15 judgments = 31 jobs**, or **32** with a baseline. Four fixed answers take seven jobs; eight take 15. Explicit evolving mode takes **91**, or **92** with a baseline. Retries and extra artifact-generation jobs add usage. Plan without invoking models:
+A default run is **31 core jobs + two required packages = 33 worker jobs**, or **34** with a baseline. Four fixed answers take seven core jobs plus two packages; eight take 15 plus two. Explicit evolving mode takes **93**, or **94** with a baseline. Retries add worker jobs; coordination and rendering also consume time and resources. Plan without invoking models:
 
 ```bash
 python skills/arena/bracket.py plan --json

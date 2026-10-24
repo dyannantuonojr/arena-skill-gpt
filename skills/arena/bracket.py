@@ -34,6 +34,8 @@ import re
 import sys
 import shlex
 import hashlib
+import arena_artifacts as artifacts
+from arena_view import export_view, state_fingerprint
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -51,8 +53,8 @@ MODES = ("select", "evolve")
 ROOT = ".arena"
 LATEST = "LATEST"
 STATE_FILE = "arena.json"
-PHASES = ("spawn", "attack", "defend", "judge", "final")
-TEMPLATES = ("competitor", "attacker", "defender", "judge", "selector", "final")
+PHASES = ("spawn", "attack", "defend", "judge", "final", "artifacts")
+TEMPLATES = ("competitor", "attacker", "defender", "judge", "selector", "final", "artifact")
 CALLS_PER_MATCH = 5        # 2 attacks, 2 defenses, 1 judge
 
 # Mirrors the table in rubric.md. tests/test_bracket.py checks they agree.
@@ -303,6 +305,8 @@ def new_state(n, seed, data, run_dir, wave=DEFAULT_WAVE, has_baseline=False, mod
         "cards_available": combo_count(data),
         "wave": wave,
         "mode": mode,
+        "require_finalist_artifacts": True,
+        "require_answer_view": True,
         "dir": run_dir,
         "has_baseline": bool(has_baseline),
         "agents": agents,
@@ -640,6 +644,14 @@ def phase_jobs(state, phase):
         for aid in sorted(state["agents"]):
             jobs.append({"id": aid + ".spawn", "kind": "competitor", "round": 0, "agent": aid,
                          "outputs": [spawn_out(d, aid)]})
+    elif phase == "artifacts":
+        if state["champion"] and state.get("require_finalist_artifacts"):
+            for aid in artifacts.finalists(state):
+                directory = artifacts.package_dir(state, aid)
+                jobs.append({"id": aid + ".artifact", "kind": "artifact", "round": None,
+                             "agent": aid, "directory": directory,
+                             "complete": artifacts.package_valid(state, aid),
+                             "outputs": [os.path.join(directory, "manifest.json")]})
     elif phase == "final":
         fin = state.get("final")
         if state["champion"] and fin and not fin.get("result"):
@@ -673,7 +685,7 @@ def phase_jobs(state, phase):
 
 
 def missing_jobs(jobs):
-    return [j for j in jobs if not all(_has_output(p) for p in j["outputs"])]
+    return [j for j in jobs if not (j["complete"] if "complete" in j else all(_has_output(p) for p in j["outputs"]))]
 
 
 _TEMPLATE_RE = re.compile(r"<!-- template:([a-z]+) -->\s*```text\n(.*?)\n```\s*<!-- /template:\1 -->", re.S)
@@ -758,11 +770,15 @@ def render_job(state, job, templates, task):
                  x_solution=os.path.join(d, "final", "X.md"),
                  y_solution=os.path.join(d, "final", "Y.md"),
                  out=job["outputs"][0])
+    elif kind == "artifact":
+        aid = job["agent"]
+        v.update(agent=aid, solution=agents[aid]["solution"], artifact_dir=job["directory"])
     return fill(templates[kind], v)
 
 
 def write_prompts(state, phase):
-    if state.get("mode", "evolve") == "select" and phase in ("judge", "final"):
+    verify_frozen_solutions(state)
+    if state.get("mode", "evolve") == "select" and phase in ("judge", "final", "artifacts"):
         freeze_solutions(state)
     jobs = phase_jobs(state, phase)
     if not jobs:
@@ -805,6 +821,13 @@ def next_action(state):
             jobs = phase_jobs(state, "final")
             left = missing_jobs(jobs)
             return ("final", left, jobs) if left else ("collect", [], jobs)
+        if state.get("require_finalist_artifacts"):
+            jobs = phase_jobs(state, "artifacts")
+            left = missing_jobs(jobs)
+            if left:
+                return "artifacts", left, jobs
+        if state.get("require_answer_view") and not view_ready(state):
+            return "view", [], []
         return "done", [], []
     for phase in ("attack", "defend", "judge"):
         jobs = phase_jobs(state, phase)
@@ -831,11 +854,41 @@ def plan_rows(n, wave=DEFAULT_WAVE, mode=DEFAULT_MODE):
     return rows
 
 
-def plan_totals(n, wave=DEFAULT_WAVE, mode=DEFAULT_MODE):
+def plan_totals(n, wave=DEFAULT_WAVE, mode=DEFAULT_MODE, required_outputs=True):
     rows = plan_rows(n, wave, mode)
-    calls = n + sum(r["calls"] for r in rows)
-    waves = math.ceil(n / wave) + sum(r["waves"] for r in rows)
-    return {"agents": n, "mode": mode, "rounds": len(rows), "calls": calls, "waves": waves, "rows": rows}
+    core_calls = n + sum(r["calls"] for r in rows)
+    artifact_calls = min(2, n) if required_outputs else 0
+    waves = math.ceil(n / wave) + sum(r["waves"] for r in rows) + math.ceil(artifact_calls / wave)
+    return {"agents": n, "mode": mode, "rounds": len(rows), "calls": core_calls + artifact_calls,
+            "core_calls": core_calls, "artifact_calls": artifact_calls, "waves": waves, "rows": rows}
+
+
+def view_ready(state):
+    receipt = state.get("viewer") or {}
+    try:
+        path = os.path.realpath(receipt["path"])
+        root = os.path.realpath(state["dir"])
+        if os.path.commonpath([path, root]) != root:
+            return False
+        with open(path, "rb") as fh:
+            digest = hashlib.sha256(fh.read()).hexdigest()
+        if receipt.get("answers_complete") is not True:
+            return False
+        assets = receipt.get("assets", [])
+        if not isinstance(assets, list):
+            return False
+        if state.get("require_finalist_artifacts") and len(assets) != len(artifacts.finalists(state)):
+            return False
+        for asset in assets:
+            asset_path = os.path.realpath(asset["path"])
+            if os.path.commonpath([asset_path, root]) != root:
+                return False
+            with open(asset_path, "rb") as fh:
+                if hashlib.sha256(fh.read()).hexdigest() != asset["sha256"]:
+                    return False
+        return digest == receipt["sha256"] and receipt["state_sha256"] == state_fingerprint(state)
+    except (KeyError, TypeError, OSError, ValueError):
+        return False
 
 
 def solution_hashes(state):
@@ -938,9 +991,12 @@ def cmd_plan(args):
     for r in t["rows"]:
         print("  %5d  %5d  %7d  %3s  %15d  %5d"
               % (r["round"], r["alive"], r["matches"], "yes" if r["bye"] else "-", r["calls"], r["waves"]))
+    print("  guides                    %15d  %5d" % (t["artifact_calls"], math.ceil(t["artifact_calls"] / args.wave)))
     print("  total                     %15d  %5d" % (t["calls"], t["waves"]))
     print("")
     print("  alive per round: %s" % " -> ".join(str(s) for s in bracket_sizes(n)))
+    print("  %d core jobs + %d required Archify implementation packages = %d worker jobs"
+          % (t["core_calls"], t["artifact_calls"], t["calls"]))
     print("  plus 1 call for the final check when there is a rejected answer to beat")
     return 0
 
@@ -1021,6 +1077,9 @@ def cmd_next(args):
     elif phase == "advance":
         print("NEXT: advance. Every match in round %d has a winner." % rd["n"])
         print("  %s" % _cmd("advance", "--dir", state["dir"]))
+    elif phase == "view":
+        print("NEXT: view. Export the required all-answer viewer.")
+        print("  %s" % _cmd("view", "--dir", state["dir"]))
     else:
         print("DONE. %s" % _cmd("winner", "--dir", state["dir"]))
     return 0
@@ -1035,7 +1094,7 @@ def cmd_prompts(args):
     left = missing_jobs(jobs)
     w = state["wave"]
     rd = current_round(state)
-    where = "round 0" if args.phase == "spawn" else ("final" if args.phase == "final" else "round %d" % rd["n"])
+    where = "round 0" if args.phase == "spawn" else ("finalist implementation" if args.phase == "artifacts" else ("final" if args.phase == "final" else "round %d" % rd["n"]))
     waves = [left[i:i + w] for i in range(0, len(left), w)]
     print("%s, %s: %d job(s), %d still to run, %d wave(s) of up to %d"
           % (where, args.phase, len(jobs), len(left), len(waves), w))
@@ -1197,6 +1256,10 @@ def winner_report(state):
 def cmd_winner(args):
     state = load_state(args)
     rep = winner_report(state)
+    if state.get("require_finalist_artifacts") or state.get("require_answer_view"):
+        phase, _, _ = next_action(state)
+        if phase != "done":
+            raise ArenaError("required delivery outputs are incomplete (%s); run next" % phase)
     if rep is None:
         rd = current_round(state)
         print("no winner yet: round %s, %d alive. %s"
@@ -1237,6 +1300,48 @@ def cmd_card(args):
     for part in ("reasoning", "workflow", "strategy"):
         print("  %-9s %s. %s" % (part, c[part]["name"], c[part]["how"]))
     print("  solution  %s" % a["solution"])
+    return 0
+
+
+def cmd_accept_artifact(args):
+    state = load_state(args)
+    if not state["champion"]:
+        raise ArenaError("finish the tournament before accepting finalist guides")
+    if state.get("mode", "evolve") == "select":
+        freeze_solutions(state)
+    aid = norm_agent(state, args.agent_id)
+    try:
+        metadata = artifacts.accept_package(state, aid)
+    except artifacts.ArtifactError as e:
+        raise ArenaError(str(e))
+    state.setdefault("finalist_packages", {})[aid] = metadata
+    save_state(state)
+    print("accepted required Archify implementation package for %s" % aid)
+    return 0
+
+
+def cmd_view(args):
+    state = load_state(args)
+    verify_frozen_solutions(state)
+    output = os.path.abspath(args.output or os.path.join(state["dir"], "viewer", "index.html"))
+    root = os.path.realpath(state["dir"])
+    try:
+        resolved = os.path.realpath(output)
+        relative = os.path.relpath(resolved, root)
+        if os.path.commonpath([resolved, root]) != root or relative.split(os.sep)[0] not in ("viewer", "visual"):
+            raise ArenaError("viewer output must be inside RUN/viewer or RUN/visual, separate from source/state files")
+        if os.path.splitext(output)[1].lower() != ".html":
+            raise ArenaError("viewer output must be an HTML file")
+    except ValueError:
+        raise ArenaError("viewer output must be inside RUN/viewer or RUN/visual")
+    try:
+        state["viewer"] = export_view(state, output)
+    except (ValueError, OSError) as e:
+        raise ArenaError(str(e))
+    save_state(state)
+    print("all-answer viewer: %s" % output)
+    if state["champion"] and state["viewer"].get("answers_complete") is not True:
+        raise ArenaError("viewer exported, but original answers are unreadable or missing; delivery remains incomplete")
     return 0
 
 
@@ -1303,6 +1408,12 @@ def build_parser():
     s = sub.add_parser("card", parents=[common], help="one competitor's strategy card")
     s.add_argument("agent_id")
     s.set_defaults(func=cmd_card)
+    s = sub.add_parser("accept-artifact", parents=[common], help="validate and accept a required finalist implementation package")
+    s.add_argument("agent_id")
+    s.set_defaults(func=cmd_accept_artifact)
+    s = sub.add_parser("view", parents=[common], help="export the required all-answer viewer")
+    s.add_argument("--output", help="HTML path inside the run (default viewer/index.html)")
+    s.set_defaults(func=cmd_view)
     return p
 
 

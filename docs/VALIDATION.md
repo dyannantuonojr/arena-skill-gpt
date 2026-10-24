@@ -1,23 +1,27 @@
-# Validation record: fixed-answer default (v2)
+# Validation record: required outputs (v3)
 
 Validated on 2026-10-24 before publication.
 
-- Full standard-library suite: 43 tests passed. This includes a real-CLI synthetic
-  16-answer selection tournament with exactly 31 jobs, four fixed-branch rounds,
-  and unchanged original answer paths, plus the explicit legacy evolving pipeline.
-- The selection tests reject changed answers during judging and at final delivery.
-- Independent review reproduced the final-delivery hash gap; its regression failed
-  before the fix and passed afterward. All five selection tests passed independently,
-  including an additional singleton CLI smoke check.
-- Legacy states without a mode remain evolving runs. The explicit evolving plan
-  remains 91 jobs; the default selection plan is 31. Optional baseline adds one.
-- Skill creator frontmatter validation and diff whitespace checks passed.
-- Cross-platform CI runs Windows/Linux with Python 3.8/3.12.
+- Full standard-library suite:70 tests run successfully on the Windows host;
+  two filesystem-symlink checks skipped because creation is not permitted here.
+  Linux CI executes those checks. Tests cover the original selection/evolution
+  engines, mandatory package acceptance/delivery gates, and safe all-answer export.
+- Independent review reproduced original/state overwrite, incorrect evolving-mode
+  counters, and unreadable-answer false completion. All three have regression tests
+  and fixes. Sidecar writes are constrained to the report directory before writes.
+- Viewer tests cover every answer, closed scope/assumption blocks, script escaping,
+  safe links, UTF8/UTF16 BOM decoding, live source fingerprints, copied diagram hashes,
+  input-preserving export and pending output behavior.
+- The current real run has16 unchanged original answers,15 judgments and two actual
+  finalist implementation packages. Both Archify native workflows passed validate,
+  delivery, strict provenance and browser gates; accepted hashes match actual bytes.
+- Browser interaction verified answer selection, a rendered finalist implementation
+  guide, a working Archify iframe and collapsed assumptions. The live header uses
+  plain text; job/rubric details are collapsed.
+- Skill frontmatter validation and diff whitespace checks passed.
 
-These tests establish engine contracts and bookkeeping, not general model answer
-accuracy. Native worker scheduling and retry limits remain instructions interpreted
-by the host, not an autonomous Python model runner or an OS sandbox. A selected
-answer may still be wrong. Archify automation verifies diagram artifact properties;
-it does not prove the diagram's semantic truth. Diagram receipts accompany its HTML.
-
-The default workflow diagram pins code commit `27c62901a490e2bb4df88aa8e412f91938bf87a5`. All Archify gates and exact candidate/HTML hashes were verified against its review-select receipt.
+New-run budget:31 core jobs +2 mandatory package jobs=33 worker jobs. Rendering and
+coordinator overhead are separate. Old saved-run fixtures exercise compatibility;
+new runs cannot finish without accepted packages and a current complete viewer.
+Unsigned receipts bind files to reported checks; they do not attest renderer identity
+or semantic truth. A tournament winner is not certification of general accuracy.

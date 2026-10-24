@@ -1,7 +1,7 @@
 {
   "name": "arena-skill-gpt",
-  "description": "Select among 16 fixed GPT/Codex answers with 15 independent judgments: 31 jobs by default. Original evolving mode is explicit.",
-  "version": "2.0.0",
+  "description": "16 fixed answers, all-answer viewer, and mandatory Archify implementation guides for both finalists: 31 core plus 2 package jobs.",
+  "version": "3.0.0",
   "author": {
     "name": "dyannantuonojr"
   },

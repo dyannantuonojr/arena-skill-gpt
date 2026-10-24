@@ -59,13 +59,23 @@ class TempDir(unittest.TestCase):
         self.assertEqual(r.returncode, 0, "bracket.py %s failed:\n%s%s" % (" ".join(map(str, args)), r.stdout, r.stderr))
         return r.stdout
 
+    def legacy_init(self, *args):
+        """Construct a v2 saved-run fixture without v3 delivery requirements."""
+        output = self.ok("init", *args)
+        d = str(args[args.index("--dir") + 1])
+        state = load(d)
+        state.pop("require_finalist_artifacts", None)
+        state.pop("require_answer_view", None)
+        write(os.path.join(d, "arena.json"), json.dumps(state))
+        return output
+
 
 class SimulatedTournament(TempDir):
     """Random winners, driven only through the CLI: init, pairings, record, advance, status, winner."""
 
     def run_tournament(self, n, seed):
         d = os.path.join(self.tmp, "run-%d" % n)
-        self.ok("init", "--mode", "evolve", "--agents", n, "--seed", seed, "--task", "Simulated task.", "--dir", d)
+        self.legacy_init( "--mode", "evolve", "--agents", n, "--seed", seed, "--task", "Simulated task.", "--dir", d)
         rng = random.Random(seed)
         alive_at_start = []
         while True:
@@ -204,9 +214,9 @@ class Dealer(unittest.TestCase):
 class Plan(unittest.TestCase):
     def test_numbers(self):
         self.assertEqual(B.bracket_sizes(100), [100, 50, 25, 13, 7, 4, 2, 1])
-        t = B.plan_totals(100, wave=10, mode="evolve")
+        t = B.plan_totals(100, wave=10, mode="evolve", required_outputs=False)
         self.assertEqual((t["rounds"], t["calls"], t["waves"]), (7, 595, 70))
-        t = B.plan_totals(16, wave=10, mode="evolve")
+        t = B.plan_totals(16, wave=10, mode="evolve", required_outputs=False)
         self.assertEqual((t["rounds"], t["calls"], t["waves"]), (4, 91, 16))
 
 
@@ -286,7 +296,7 @@ class FullPipelineWithFakeAgents(TempDir):
         base_file = os.path.join(self.tmp, "baseline.md")
         write(task_file, self.TASK)
         write(base_file, "The sea is big.")
-        self.ok("init", "--mode", "evolve", "--agents", 16, "--seed", 9, "--task-file", task_file, "--baseline-file", base_file, "--dir", d)
+        self.legacy_init( "--mode", "evolve", "--agents", 16, "--seed", 9, "--task-file", task_file, "--baseline-file", base_file, "--dir", d)
         self.assertTrue(os.path.isfile(os.path.join(d, "rubric.md")), "the run has its own rubric copy")
         rng = random.Random(9)
         seen = []
@@ -338,7 +348,7 @@ class FullPipelineWithFakeAgents(TempDir):
 
     def test_spawn_briefs_share_one_task_and_differ_in_card(self):
         d = os.path.join(self.tmp, "run16")
-        self.ok("init", "--quick", "--seed", 4, "--task", self.TASK, "--dir", d)
+        self.legacy_init( "--quick", "--seed", 4, "--task", self.TASK, "--dir", d)
         self.ok("prompts", "spawn", "--dir", d)
         blocks, cards = set(), set()
         for name in sorted(os.listdir(os.path.join(d, "prompts", "r0"))):
@@ -351,7 +361,7 @@ class FullPipelineWithFakeAgents(TempDir):
 
     def test_unreadable_verdict_is_set_aside_and_rerun(self):
         d = os.path.join(self.tmp, "bad")
-        self.ok("init", "--mode", "evolve", "--agents", 2, "--seed", 1, "--task", "t", "--dir", d)
+        self.legacy_init( "--mode", "evolve", "--agents", 2, "--seed", 1, "--task", "t", "--dir", d)
         state = load(d)
         m = state["rounds"][0]["matches"][0]
         path = B.verdict_out(d, 1, m["id"])
@@ -367,7 +377,7 @@ class FullPipelineWithFakeAgents(TempDir):
 class Guards(TempDir):
     def test_init_refuses_to_overwrite_and_bad_sizes(self):
         d = os.path.join(self.tmp, "run")
-        self.ok("init", "--agents", 4, "--task", "t", "--dir", d)
+        self.legacy_init( "--agents", 4, "--task", "t", "--dir", d)
         self.assertEqual(cli("init", "--agents", 4, "--task", "t", "--dir", d).returncode, 2)
         self.assertEqual(cli("init", "--agents", 0, "--task", "t", "--dir", d + "2").returncode, 2)
         self.assertEqual(cli("init", "--agents", 2161, "--task", "t", "--dir", d + "3").returncode, 2)
@@ -376,12 +386,12 @@ class Guards(TempDir):
 
     def test_quick_is_16(self):
         d = os.path.join(self.tmp, "quick")
-        self.ok("init", "--quick", "--task", "t", "--dir", d)
+        self.legacy_init( "--quick", "--task", "t", "--dir", d)
         self.assertEqual(load(d)["agents_n"], 16)
 
     def test_record_rejects_an_outsider(self):
         d = os.path.join(self.tmp, "rec")
-        self.ok("init", "--agents", 4, "--seed", 2, "--task", "t", "--dir", d)
+        self.legacy_init( "--agents", 4, "--seed", 2, "--task", "t", "--dir", d)
         m = load(d)["rounds"][0]["matches"][0]
         outsider = next(a for a in load(d)["agents"] if a not in (m["a"], m["b"]))
         self.assertEqual(cli("record", m["id"], outsider, "--dir", d).returncode, 2)

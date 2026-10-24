@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "arena-skill-gpt",
-  "description": "Arena 16 fixed-answer selection for GPT and Codex",
+  "description": "Arena with required answer viewer and finalist implementation guides",
   "owner": {
     "name": "dyannantuonojr"
   },
   "plugins": [
     {
       "name": "arena-skill-gpt",
-      "description": "16 fixed answers + 15 independent judgments = 31 jobs.",
+      "description": "31 core jobs +2 mandatory Archify finalist packages; every answer browsable.",
       "source": "./",
       "category": "productivity",
       "homepage": "https://github.com/dyannantuonojr/arena-skill-gpt"

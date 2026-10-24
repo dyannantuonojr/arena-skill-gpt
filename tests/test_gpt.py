@@ -13,7 +13,7 @@ from test_bracket import B, BRACKET, TempDir, cli, load, write
 class GPTDefaults(TempDir):
     def test_default_run_deals_16_and_plans_31_jobs(self):
         plan = json.loads(self.ok('plan', '--json'))
-        self.assertEqual((plan['agents'], plan['rounds'], plan['calls']), (16, 4, 31))
+        self.assertEqual((plan['agents'], plan['rounds'], plan['core_calls']), (16, 4, 31))
         d = os.path.join(self.tmp, 'default')
         self.ok('init', '--task', 'Find the simplest correct solution.', '--dir', d)
         self.assertEqual(len(load(d)['agents']), 16)

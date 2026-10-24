@@ -1,4 +1,4 @@
 interface:
   display_name: "Arena 16"
-  short_description: "Select fixed answers in a 16-entry tournament"
-  default_prompt: "Use $arena to compare solutions to my task with independent judging and unchanged answers."
+  short_description: "Browse all answers with required finalist guides"
+  default_prompt: "Use $arena to compare solutions to my task with independent judging, unchanged answers, and required Archify implementation guides."

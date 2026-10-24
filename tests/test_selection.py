@@ -9,9 +9,9 @@ from test_bracket import B, TempDir, cli, load, write
 class FixedSelection(TempDir):
     def test_selection_is_default_and_evolve_is_explicit(self):
         default = json.loads(self.ok('plan', '--json'))
-        self.assertEqual((default['agents'], default['rounds'], default['calls']), (16, 4, 31))
+        self.assertEqual((default['agents'], default['rounds'], default['core_calls'], default['calls']), (16, 4, 31, 33))
         legacy = json.loads(self.ok('plan', '--mode', 'evolve', '--json'))
-        self.assertEqual(legacy['calls'], 91)
+        self.assertEqual(legacy['core_calls'], 91)
 
     def test_only_judges_follow_frozen_drafts_and_branches_stay_fixed(self):
         d = os.path.join(self.tmp, 'selection')
@@ -53,7 +53,7 @@ class FixedSelection(TempDir):
             self.ok('advance', '--dir', d)
             self.assertEqual({a: v['solution'] for a, v in load(d)['agents'].items()}, initial)
         self.assertEqual(jobs_run, 31)
-        self.assertIn('DONE', self.ok('next', '--dir', d))
+        self.assertIn('NEXT: artifacts', self.ok('next', '--dir', d))
         self.assertEqual(len(load(d)['rounds']), 4)
 
     def test_changed_answer_is_rejected_after_judging_begins(self):
@@ -95,7 +95,7 @@ class FixedSelection(TempDir):
         write(job['outputs'][0], json.dumps(verdict))
         self.ok('collect', '--dir', d)
         self.ok('advance', '--dir', d)
-        self.assertIn('DONE', self.ok('next', '--dir', d))
+        self.assertIn('NEXT: artifacts', self.ok('next', '--dir', d))
         write(load(d)['agents'][a]['solution'], 'changed after completion')
         result = cli('winner', '--dir', d)
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
