@@ -21,16 +21,18 @@
 - Question/rubric remain exact and visible; reviews/judgments readable; reads start no work.
 
 ## Task 1: Runner/service
-- [ ] Write failing fixture tests for sequential dependencies, both possible winners, rejected judgment, tampering and durable requests.
-- [ ] Implement grudge_match.py reusing owned runner and service.
-- [ ] Run tests; verify five jobs and only one artifact job.
+- [x] Write failing fixture tests for sequential dependencies, both possible winners, rejected judgment, tampering and durable requests.
+- [x] Implement grudge_match.py reusing owned runner and service.
+- [x] Run tests; verify five jobs and only one artifact job.
 
 ## Task 2: Plugin/interface
-- [ ] Write failing protocol/resource tests for separate Grudge tools, idle read and visible form.
-- [ ] Register Grudge tools/resource; reuse existing viewer with workflow configuration and labeled outputs.
-- [ ] Verify original tools unchanged, new viewer and all output links with no model workers.
+- [x] Write failing protocol/resource tests for separate Grudge tools, idle read and visible form.
+- [x] Register Grudge tools/resource; reuse existing viewer with workflow configuration and labeled outputs.
+- [x] Verify original tools unchanged, new viewer and all output links with no model workers.
 
 ## Task 3: Delivery
-- [ ] Document invocation and exact job count; add operating skill.
-- [ ] Run appropriate suite and independent final review; repair important findings.
-- [ ] Deploy files to existing personal runtime and refresh idle connection only. Verify idle UI, no real runs. Keep Git changes reviewable.
+- [x] Document invocation and exact job count; add operating skill.
+- [x] Run appropriate suite and independent final review; repair important findings.
+- [x] Deploy files to existing personal runtime and refresh idle connection only. Verify idle UI, no real runs. Keep Git changes reviewable.
+
+Delivery: the user refined the interface to an Arena / Grudge Match toggle in the same UI. Verified the actual connected ChatGPT widget in idle Grudge mode, with visible inputs and pending tree nodes. No model run started. Code is on the grudge-match branch in draft PR #1; main is unchanged.
