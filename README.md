@@ -17,12 +17,28 @@ codex login
 python skills/arena/arena_web.py --port 8767
 ```
 
-Open the printed loopback URL. Enter your **question**, add optional **grading
-criteria**, and click **Start Arena**. The app saves the inputs, runs three
-independent Codex worker sessions at a time, and updates the same interactive tree.
-Click any answer or match to read its results. Both finalists get required
-implementation and Archify tabs. **Stop run** cancels the app's worker processes.
-No prompt copying or return to a chat is required.
+### Enter a question and start
+
+1. Open [http://127.0.0.1:8767/](http://127.0.0.1:8767/) after starting the app.
+2. In **Task & rubric**, enter your question in **Question / task**. This is required.
+3. **Optionally** add **Grading guidance**: priorities, constraints, or evidence you
+   want the judges to check. For example: “Require cited sources and practical
+   implementation steps; flag unsupported claims.”
+4. Leave the guidance blank to use Arena's standard rubric. **You do not need to
+   write, upload, or download a rubric to start.**
+5. Click **Start Arena** in the UI. The task and optional guidance are saved and
+   the run begins directly; nothing needs to be copied into a chat.
+6. Watch the live tree. Click an answer to read it, or a match to inspect its
+   judgment. Both finalists have **Implementation** and **Archify** tabs.
+
+**Is grading guidance truly optional? Yes.** A blank or whitespace-only field uses
+the default rubric: correctness 30%, completeness 25%, specificity 15%, robustness
+20%, and clarity 10%. If you supply guidance, every competitor and judge receives
+it alongside that rubric; it does not replace the five criteria or change their
+weights. The default rubric is always used, even when you supply no guidance.
+
+The app runs up to three independent Codex workers at once. **Stop run** cancels
+its worker processes.
 
 The app needs Python 3.8+, Node 18+, Codex CLI signed in with ChatGPT, and an
 installed Chrome/Chromium/Edge browser. On Windows it also discovers the desktop
