@@ -54,18 +54,38 @@ Use wave 1 unless capacity is confirmed. Four total agent slots including the
 coordinator allow at most three workers; subtract other active work. Reduce an
 excessive requested wave and disclose it. Do not change runtime limits or permissions.
 
+Before spending any worker jobs, collect the user's grading priorities and acceptance
+criteria. Offer the default rubric if the user wants no custom criteria. Reuse criteria
+already explicitly supplied; do not invent a preferred solution or infer preferences
+from your own proposed answer. Save custom criteria verbatim as a UTF-8 file and pass
+`--rubric-file PATH` to init. An empty file is rejected; omit the flag for the default.
+The five numerical criteria and their weights remain fixed for scoring compatibility;
+custom criteria guide how those scores are assigned.
+
 Write a standalone task under .arena containing the request, constraints, necessary
 context/source paths, and acceptance criteria. Do not add your preferred solution.
 Save a prior answer when a baseline is relevant. Each generated brief repeats the
 same frozen task; never add a hint or paraphrase for one competitor.
 
 ```text
-ARENA init --agents N --mode MODE --wave W --task-file .arena/task.md [--baseline-file .arena/baseline.md] [--seed S]
+ARENA init --agents N --mode MODE --wave W --task-file .arena/task.md [--rubric-file .arena/user-rubric.md] [--baseline-file .arena/baseline.md] [--seed S]
 ```
 
 Keep the returned absolute directory as RUN and use `--dir "RUN"` on every later
 command. One coordinator alone changes arena.json. Workers write only the outputs
 and scratch paths in their brief; these instruction boundaries are not an OS sandbox.
+
+Init saves exact custom input as RUN/user-rubric.md and appends it to RUN/rubric.md
+under User grading criteria. Every initial competitor receives the same frozen user
+criteria; every judge reads the effective run rubric. SHA-256 digests in arena.json
+freeze both files at initialization. Resume and judging reject edits or missing files;
+restore the original bytes or start a new run. Historical states without rubric digests
+remain readable. Editing a completed run does not regrade it.
+
+The viewer's rubric editor exports user-rubric.md and can copy a start request for a
+new run. Use that exported file with `ARENA init --rubric-file PATH` on the next run.
+Browser edits and exports do not mutate the saved run, its criteria, scores or winners,
+and do not trigger regrading.
 
 ## Run the saved bracket
 
@@ -101,6 +121,15 @@ acceptance. Workers never invent receipts or write acceptance manifests themselv
 Missing/failed/stale packages remain incomplete; there is no optional fallback.
 Rendering success is not proof of semantic accuracy: review guide/diagram meaning
 against the original recommendation and source, marking proposed steps honestly.
+
+Keep the Arena tree as the primary output throughout the run. Render/update the
+native Archify tree from the actual saved pairings/results at
+RUN/visual/arena-tree.html or RUN/viewer/arena-tree.html. Preserve the native reader;
+the export embeds it with answer/match click handling in a sandbox. Before that
+asset is ready, the exporter shows a state-derived SVG tree with all answers.
+Clicking an answer opens its original text in an adjacent panel; clicking a match
+shows its judgment and links to both answers. The tree must remain visible when
+reading results. Do not replace it with a list-first results page.
 
 When next requests view run `ARENA view --dir "RUN"`. Export paths must be inside
 RUN/viewer or RUN/visual, separate from original answers and state. Open the HTML

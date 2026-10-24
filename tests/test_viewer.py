@@ -44,6 +44,41 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(result['sha256'], hashlib.sha256(Path(result['path']).read_bytes()).hexdigest())
         self.assertEqual(json.loads((self.root/'out'/'index.state.json').read_text())['state_sha256'], result['state_sha256'])
 
+    def test_tree_is_primary_and_answer_panel_opens_from_tree_messages(self):
+        _, page, data = self.export()
+        self.assertIn('id="arena-tree"', page)
+        self.assertIn('id="results-panel" hidden', page)
+        self.assertIn('event.source!==tree.contentWindow', page)
+        self.assertIn('data-node-id="draft_a001"', data['tree_html'])
+        self.assertIn('data-node-id="draft_a016"', data['tree_html'])
+        self.assertIn('arena-node-selected', data['tree_html'])
+        self.assertIn('aria-label="Close results"', page)
+
+    def test_existing_archify_tree_is_preserved_and_embedded_with_selection_bridge(self):
+        tree = self.root/'visual'/'arena-tree.html'
+        tree.parent.mkdir()
+        original = '<!doctype html><html><body><svg><g data-node-id="draft_a001" role="button"><text>Original native tree</text></g></svg></body></html>'
+        tree.write_text(original, encoding='utf-8')
+        fingerprint = self.view.state_fingerprint(self.state)
+        _, page, data = self.export()
+        self.assertIn('Original native tree', data['tree_html'])
+        self.assertIn('parent.postMessage', data['tree_html'])
+        self.assertEqual(tree.read_text(encoding='utf-8'), original)
+        with self.assertRaises(ValueError):
+            self.view.export_view(self.state, tree)
+        tree.write_text(original.replace('Original native', 'Updated native'), encoding='utf-8')
+        self.assertNotEqual(fingerprint, self.view.state_fingerprint(self.state))
+
+    def test_rubric_editor_is_explicitly_for_next_run_and_current_rubric_is_readable(self):
+        (self.root/'rubric.md').write_text('# Actual grading rubric\nCheck reproducible evidence.', encoding='utf-8')
+        _, page, data = self.export()
+        self.assertIn('Check reproducible evidence.', data['rubric_html'])
+        self.assertIn('id="user-rubric"', page)
+        self.assertIn('Download rubric', page)
+        self.assertIn('next run', page)
+        self.assertIn('user-rubric.md', page)
+        self.assertIn('--rubric-file', page)
+
     def test_renderer_escapes_active_markup_and_embedded_data_cannot_close_script(self):
         attack = '</script><script>alert(1)</script><img src=x onerror=alert(2)>\n[bad](javascript:alert(3))'
         Path(self.state['agents']['a001']['solution']).write_bytes(attack.encode('utf-8'))
@@ -95,7 +130,8 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(result['assets'], [{'path': str(copied.resolve()), 'sha256': digest(copied)}])
         self.assertEqual(copied.read_text(), values['diagram.html'])
         self.assertEqual(data['answers']['a014']['diagram'], 'finalists/a014/diagram.html')
-        self.assertIn('sandbox=""', html)
+        self.assertIn('sandbox="allow-scripts allow-downloads"', html)
+        self.assertNotIn('allow-same-origin', html)
         (package/'diagram.html').write_text('tampered', encoding='utf-8')
         _, _, data = self.export()
         self.assertIsNone(data['answers']['a014']['diagram'])

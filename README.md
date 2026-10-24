@@ -68,12 +68,42 @@ In ChatGPT hosts that expose installed skills, select Arena with `@`. In Codex u
 | `--quick` | Alias for 16, retained from upstream |
 | `--seed S` | Reproducible cards and pairings, not reproducible model answers |
 | `--wave W` | Parallel job ceiling; default 1, limited further by actual runtime capacity |
+| `--rubric-file PATH` | UTF-8 user grading priorities and acceptance criteria, frozen for the new run |
 
 Sixteen competitors are not sixteen simultaneous workers. The coordinator reserves its own slot, waits for workers, and releases them when required by the host. Every job receives a fresh context. It never substitutes itself for an independent judge.
 
-## Required output window
+Before worker jobs start, Arena collects your grading priorities and acceptance criteria;
+you can choose the default rubric instead. Supply your own criteria verbatim in a UTF-8
+file (empty files are rejected):
 
-Every original answer is available from both the answer list and bracket. Finalists
+```bash
+python skills/arena/bracket.py init --task-file task.md --rubric-file user-rubric.md
+```
+
+The run saves the exact input as `RUN/user-rubric.md` and appends it under **User
+grading criteria** in `RUN/rubric.md`. Every initial competitor gets the same criteria
+and judges apply them when assigning the five fixed scores: correctness 30%,
+completeness 25%, specificity 15%, robustness 20%, and clarity 10%. This preserves
+score arithmetic while letting your priorities guide grading. Arena does not invent
+a preferred solution on your behalf.
+
+Both rubric files are frozen with SHA-256 digests at initialization. Changes or missing
+files stop resume and judging; restore the original bytes or start a new run. Existing
+historical runs without rubric digests remain compatible. Omitting `--rubric-file`
+uses the default rubric.
+
+The viewer's rubric editor exports a `user-rubric.md` file and copies a request to
+start a new Arena run. Use the export on your **next run** via `--rubric-file PATH`.
+Editing or exporting criteria in the browser does not change or regrade the saved
+run, including a completed run; its scores and winners stay recorded as judged.
+
+## Arena tree workspace
+
+The Arena tree is the main view throughout the run. Click an answer node to read
+its original text in the adjacent results panel; click a match to inspect the
+judgment and open either entry. Closing results returns the full canvas. The tree
+stays visible while reading, including on narrow screens. Find answer is a compact
+shortcut, not the primary page. Finalists
 also have **Implementation** and **Archify** tabs. Assumptions and review scope stay
 inside closed details sections, preserving original answer bytes.
 
@@ -95,7 +125,11 @@ python skills/arena/bracket.py view --dir "/absolute/path/to/run"
 
 Use the actual finalist IDs. The coordinator generates the files before accepting
 them. The exporter writes `RUN/viewer/index.html` by default and protects original
-answers/state from overwrite. It works offline; for live refresh serve the folder:
+answers/state from overwrite. If the coordinator has rendered a native Archify
+tree at `RUN/visual/arena-tree.html` or `RUN/viewer/arena-tree.html`, it reuses that
+reader with a sandboxed selection bridge, preserving the source HTML. While the
+native tree is being prepared, a state-derived SVG tree keeps every answer
+clickable. Refresh the native tree and export after each wave/round. It works offline; for live refresh serve the folder:
 
 ```bash
 python -m http.server 8766 --bind 127.0.0.1 --directory "/absolute/path/to/run/viewer"

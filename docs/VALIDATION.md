@@ -31,3 +31,13 @@ The published workflow diagram is pinned to source commit b3ccf5d160d9f8bfdffbc1
 Windows CI exposed 8.3 short directory names being mistaken for redirects. Path
 validation now checks actual links/reparse points and canonical containment. A real
 Windows short-name regression passes locally; symlink rejection remains covered.
+
+
+Tree workspace and user rubrics (v3.1): 79 local tests pass (two symlink tests
+skipped on this Windows host). Browser checks clicked an original native tree leaf
+(a015), a finalist (a004) and its implementation guide, and the final match with
+both answer links. The native passport is suppressed in this embedded workspace
+so it cannot obscure the canvas; the source Archify HTML is unchanged. Rubric
+input rejected blanks and downloaded a UTF-8 next-run rubric. Five engine tests
+cover exact criteria propagation, frozen source/effective rubrics, rejection before
+writes, and historical compatibility. Independent focused review found no blocker.

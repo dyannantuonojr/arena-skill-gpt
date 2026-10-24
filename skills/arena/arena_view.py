@@ -1,4 +1,4 @@
-"""Portable, offline all-answer arena viewer. Standard library only."""
+"""Portable tree-first arena viewer. Standard library only."""
 import hashlib
 import html
 import json
@@ -38,6 +38,9 @@ def state_fingerprint(state):
             except (KeyError, TypeError, ValueError):
                 location = None
             source('package:' + str(aid) + ':' + name, location)
+    if root is not None:
+        for relative in ('visual/arena-tree.html', 'viewer/arena-tree.html', 'rubric.md', 'user-rubric.md'):
+            source(relative, root/relative)
     payload = {'state': data, 'sources': sources}
     canonical = json.dumps(payload, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
     return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
@@ -179,6 +182,7 @@ def _validate_export_paths(state, root, output, finalists):
             except (ValueError, OSError):
                 pass
     collect(state)
+    protected.update((root/name).resolve() for name in ('visual/arena-tree.html', 'viewer/arena-tree.html', 'user-rubric.md'))
     for package in state.get('finalist_packages', {}).values():
         try:
             directory = _inside(root, package['directory'])
@@ -271,7 +275,11 @@ def export_view(state, output_path):
                 entry['package_status'] = 'pending (missing or unvalidated artifacts)'
         answers[aid] = entry
     fingerprint = state_fingerprint(state)
-    data = {'answers': answers, 'rounds': state.get('rounds', []), 'champion': state.get('champion'), 'state_sha256': fingerprint}
+    data = {'answers': answers, 'rounds': state.get('rounds', []), 'champion': state.get('champion'), 'state_sha256': fingerprint, 'tree_html': tree_document(state), 'rubric_html': ''}
+    try:
+        data['rubric_html'] = render_markdown(_read_source(_inside(root, root/'rubric.md')))
+    except (OSError, ValueError):
+        data['rubric_html'] = '<p>Grading rubric unavailable in this saved run.</p>'
     encoded = json.dumps(data, ensure_ascii=True).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
     def button(aid):
         item = answers.get(aid, {})
@@ -299,20 +307,108 @@ def export_view(state, output_path):
     return {'path': str(output), 'sha256': _sha(output), 'state_sha256': fingerprint, 'assets': assets, 'answers_complete': bool(answers) and all(item['status'] == 'ready' for item in answers.values())}
 
 
+
+_TREE_BRIDGE = '''<style>#focus-chip{display:none!important}[data-arena-selected] rect{stroke:#65dfc2!important;stroke-width:3px!important}</style><script>
+(function(){
+ function selected(event){
+  if(event.type==='keydown'&&event.key!=='Enter'&&event.key!==' ')return;
+  const node=event.target.closest&&event.target.closest('[data-node-id]');
+  if(node){event.preventDefault();event.stopImmediatePropagation();document.querySelectorAll('[data-arena-selected]').forEach(n=>n.removeAttribute('data-arena-selected'));node.setAttribute('data-arena-selected','true');parent.postMessage({type:'arena-node-selected',id:node.getAttribute('data-node-id')},'*');}
+ }
+ document.addEventListener('click',selected,true);
+ document.addEventListener('keydown',selected,true);
+})();
+</script>'''
+
+
+def tree_document(state):
+    """Reuse the run's native Archify reader, retaining its canvas and controls.
+
+    The selection bridge runs inside an opaque sandbox. The parent validates the
+    sending window and handles only known answer/match IDs, never supplied HTML.
+    A native SVG tree keeps fresh/pending runs navigable before Archify delivery.
+    """
+    root = Path(state['dir']).resolve()
+    for name in ('visual/arena-tree.html', 'viewer/arena-tree.html'):
+        try:
+            native = _read_source(_inside(root, root/name))
+            if '</body>' in native.lower():
+                return re.sub(r'</body>', lambda m: _TREE_BRIDGE + m[0], native, count=1, flags=re.I)
+        except (OSError, ValueError):
+            pass
+    agents = list(state.get('agents', {}))
+    rounds = state.get('rounds', [])
+    first = rounds[0].get('matches', []) if rounds else []
+    order = []
+    for match in first:
+        for aid in (match.get('a'), match.get('b')):
+            if aid in agents and aid not in order:
+                order.append(aid)
+    order += [aid for aid in agents if aid not in order]
+    depth = max(1, len(rounds))
+    positions, nodes, edges, winner_nodes = {}, [], [], {}
+    for index, aid in enumerate(order):
+        node = 'draft_' + aid
+        positions[node] = ((depth+1)*245, 48+index*80)
+        nodes.append((node, aid, 'Original answer'))
+        winner_nodes[aid] = node
+    for number, rd in enumerate(rounds, 1):
+        previous = dict(winner_nodes)
+        for index, match in enumerate(rd.get('matches', []), 1):
+            mid = str(match.get('id') or 'r%d-m%02d' % (number,index))
+            children = [previous[a] for a in (match.get('a'),match.get('b')) if a in previous]
+            y = sum(positions[c][1] for c in children)/len(children) if children else 48+index*80
+            positions[mid] = ((depth-number+1)*245, y)
+            winner = match.get('winner')
+            nodes.append((mid, 'R%d %s / %s' % (number,match.get('a','?'),match.get('b','?')), 'Winner '+winner if winner else 'Judgment pending'))
+            edges += [(mid,child) for child in children]
+            if winner:
+                winner_nodes[winner] = mid
+    positions['arena'] = (0, sum(p[1] for p in positions.values())/max(1,len(positions)))
+    nodes.append(('arena','Arena '+str(len(agents)), 'Selected '+state['champion'] if state.get('champion') else 'Answers in progress'))
+    if rounds:
+        last = rounds[-1].get('matches', [])
+        edges += [('arena',str(m.get('id') or 'r%d-m%02d' % (len(rounds),i))) for i,m in enumerate(last,1)]
+    else:
+        edges += [('arena','draft_'+aid) for aid in agents]
+    shapes = []
+    for source,target in edges:
+        if source not in positions or target not in positions: continue
+        x,y=positions[source];xx,yy=positions[target]
+        shapes.append('<path d="M %s %s C %s %s, %s %s, %s %s"/>' % (x+205,y+25,x+225,y+25,xx-20,yy+25,xx,yy+25))
+    for nid,label,detail in nodes:
+        x,y=positions[nid]
+        shapes.append('<g data-node-id="%s" tabindex="0" role="button" aria-label="%s" transform="translate(%s %s)"><rect width="205" height="54" rx="10"/><text x="14" y="23">%s</text><text class="detail" x="14" y="43">%s</text></g>' % (html.escape(nid,quote=True),html.escape(label,quote=True),x,y,html.escape(label),html.escape(detail)))
+    width=(depth+1)*245+235;height=max(180,len(agents)*80+60)
+    return '''<!doctype html><html><head><meta charset="utf-8"><style>
+    body{margin:0;background:#0b1120;color:#dce8fa;font:14px system-ui;height:100vh;overflow:hidden}svg{width:100%%;height:100%%;touch-action:none}path{fill:none;stroke:#386b86;stroke-width:2}rect{fill:#152336;stroke:#497d98}g{cursor:pointer}g:hover rect,g:focus rect{stroke:#65e1c5;stroke-width:3}text{fill:#edf7ff;font:13px system-ui}.detail{fill:#9fb3c9;font-size:11px}.controls{position:absolute;top:14px;left:14px;display:flex;gap:8px}button{background:#152336;color:#edf7ff;border:1px solid #497d98;border-radius:6px;padding:7px 12px;cursor:pointer}.hint{position:absolute;bottom:12px;left:14px;color:#9fb3c9}
+    </style></head><body><div class="controls"><button id="in" aria-label="Zoom in">+</button><button id="out" aria-label="Zoom out">-</button><button id="fit">Fit tree</button></div><svg viewBox="-25 -10 %d %d" aria-label="Arena tournament tree">%s</svg><div class="hint">Click an answer to read results. Scroll to zoom. Drag to pan.</div><script>
+    const svg=document.querySelector('svg'),initial=svg.getAttribute('viewBox').split(' ').map(Number);let v=initial.slice(),drag=null;
+    function draw(){svg.setAttribute('viewBox',v.join(' '));}function zoom(scale){v[0]+=v[2]*(1-scale)/2;v[1]+=v[3]*(1-scale)/2;v[2]*=scale;v[3]*=scale;draw();}
+    document.getElementById('in').onclick=()=>zoom(.8);document.getElementById('out').onclick=()=>zoom(1.25);document.getElementById('fit').onclick=()=>{v=initial.slice();draw();};
+    svg.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY>0?1.12:.89);},{passive:false});
+    svg.addEventListener('pointerdown',e=>{if(e.target.closest('[data-node-id]'))return;drag=[e.clientX,e.clientY,v.slice()];svg.setPointerCapture(e.pointerId);});svg.addEventListener('pointermove',e=>{if(!drag)return;const b=svg.getBoundingClientRect();v[0]=drag[2][0]-(e.clientX-drag[0])*v[2]/b.width;v[1]=drag[2][1]-(e.clientY-drag[1])*v[3]/b.height;draw();});svg.addEventListener('pointerup',()=>drag=null);
+    </script>%s</body></html>''' % (width,height,''.join(shapes),_TREE_BRIDGE)
+
+
 _PAGE = '''<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Arena results</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Arena tree</title>
 <style>
-:root{color-scheme:light;--ink:#17283b;--line:#d8e1e7;--accent:#007d79}*{box-sizing:border-box}body{margin:0;background:#f2f5f7;color:var(--ink);font:15px/1.6 system-ui,sans-serif}header{padding:20px 28px;background:#102e3c;color:white}h1{margin:0;font-size:24px}header p{margin:5px 0;color:#c0d9df}.layout{display:grid;grid-template-columns:245px minmax(0,1fr);max-width:1800px;margin:auto}aside{padding:20px 14px;border-right:1px solid var(--line)}aside nav{display:grid;gap:7px;position:sticky;top:12px}button{cursor:pointer;border:1px solid var(--line);border-radius:7px;padding:9px 12px;background:white;color:var(--ink);text-align:left;font:inherit}button:hover,button[aria-current=true]{border-color:var(--accent);background:#e2f4f1}main{min-width:0;padding:22px}.bracket{display:flex;gap:14px;overflow:auto;padding-bottom:14px}.round{min-width:235px;flex:1}.match{background:white;padding:12px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px}.match button{width:100%}.match p{font-size:13px;margin-bottom:0}.score{font-size:12px;display:block;margin:3px 0 8px;color:#4a6070}article{background:white;border:1px solid var(--line);border-radius:12px;padding:24px;margin-top:18px;min-height:450px}.tabs{display:flex;gap:8px;margin-bottom:20px}.tabs button[aria-selected=true]{background:var(--accent);color:white}h2{font-size:23px}h3{font-size:18px}pre{background:#102e3c;color:#ecf6f8;padding:16px;overflow:auto;border-radius:7px}code{font-family:Consolas,monospace}p{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#00766d}.scope{background:#f5f7f8;border:1px solid var(--line);border-radius:8px;padding:12px;margin:16px 0}summary{cursor:pointer;font-weight:600}table{border-collapse:collapse;width:100%}th,td{padding:8px;border:1px solid var(--line);text-align:left}.table-wrap{overflow:auto}iframe{width:100%;height:75vh;border:1px solid var(--line);border-radius:8px}.pending{color:#765e2f}#badge{font-size:14px;color:#00766d}#content{max-width:1050px}#content h1{font-size:28px;margin:20px 0 12px}@media(max-width:750px){.layout{display:block}aside{border:0}aside nav{position:static;display:flex;overflow:auto}aside button{flex-shrink:0}main{padding:12px}article{padding:16px}.tabs{flex-wrap:wrap}}
-</style></head><body><header><h1>Arena results</h1><p>__HEADLINE__</p><details><summary>Run details</summary><p>__COUNTER__</p><p>Judge scores compare the answers; they are not accuracy percentages.</p></details></header><div class="layout"><aside><h2>Browse all answers</h2><nav aria-label="All answers">__SIDEBAR__</nav></aside><main><details><summary>Tournament bracket | select any competitor</summary><div class="bracket">__BRACKET__</div></details><article><h2 id="selected"></h2><p id="badge"></p><div class="tabs" role="tablist"><button role="tab" data-tab="answer">Answer</button><button role="tab" data-tab="implementation">Implementation</button><button role="tab" data-tab="archify">Archify</button></div><p id="answer-note" class="score">Original answer, unchanged. Implementation guide reflects the required outputs.</p><div id="content"></div></article></main></div>
-<template id="diagram-frame"><iframe sandbox=""></iframe></template>
+:root{color-scheme:dark;--ink:#e3edf8;--line:#30445c;--accent:#65dfc2}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:#0b1120;color:var(--ink);font:14px/1.6 system-ui,sans-serif;height:100dvh;overflow:hidden}header{height:58px;display:flex;align-items:center;gap:16px;padding:8px 18px;border-bottom:1px solid var(--line)}header h1{font-size:17px;white-space:nowrap;margin:0}header p{font-size:12px;color:#a9bfd3;margin:0}.tools{margin-left:auto;display:flex;gap:8px;align-items:center}button,summary{cursor:pointer}button{border:1px solid var(--line);border-radius:7px;padding:7px 11px;background:#142338;color:var(--ink);font:inherit;text-align:left}button:hover,button[aria-current=true]{border-color:var(--accent);background:#203f45}summary{list-style:none;font-weight:600}.popover{position:relative}.popover>div{position:absolute;right:0;top:36px;z-index:9;background:#132137;padding:16px;border:1px solid var(--line);border-radius:9px;width:min(450px,90vw);box-shadow:0 15px 50px #0009;max-height:75vh;overflow:auto}nav{display:grid;grid-template-columns:1fr 1fr;gap:7px}.workspace{height:calc(100dvh - 58px);display:flex}#tree-region{flex:1;min-width:0}#arena-tree{width:100%;height:100%;border:0}#results-panel{width:clamp(430px,43vw,760px);flex-shrink:0;border-left:1px solid var(--line);background:#101c2e;overflow:auto;padding:22px}#results-panel h2{margin:0;font-size:23px}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:-22px;background:#101c2e;z-index:2;padding:8px 0}#badge{font-size:13px;color:var(--accent)}.tabs{display:flex;gap:8px;margin:12px 0 18px}.tabs button[aria-selected=true]{background:#246756;border-color:var(--accent)}#content h1{font-size:25px}#content h2{font-size:21px;margin:25px 0 12px}#content h3{font-size:17px}p{white-space:pre-wrap;overflow-wrap:anywhere}a{color:var(--accent)}.scope{border:1px solid var(--line);border-radius:8px;padding:12px;margin:16px 0;background:#142338}pre{background:#08111e;padding:14px;overflow:auto;border-radius:7px}code{font-family:Consolas,monospace}table{border-collapse:collapse;width:100%}td,th{padding:8px;border:1px solid var(--line);text-align:left}.table-wrap{overflow:auto}#content iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;background:#fff}.score{font-size:12px;color:#99aec3}.match button{margin-right:7px}.round{margin-top:16px}#rubric-dialog{position:fixed;z-index:20;inset:70px max(20px,calc((100vw - 850px)/2));overflow:auto;background:#132137;border:1px solid var(--line);border-radius:12px;padding:24px;box-shadow:0 0 0 100vmax #0009}textarea{width:100%;min-height:180px;background:#0a1525;color:var(--ink);padding:12px;border:1px solid #4a6888;border-radius:7px;font:inherit;resize:vertical}label{display:block;font-weight:600;margin:14px 0 6px}.rubric-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}#rubric-status{color:var(--accent)}.pending{color:#e6c887}@media(max-width:850px){header{gap:8px;padding:8px}header>p{display:none}.tools{gap:8px}button{padding:7px 9px}.workspace:has(#results-panel:not([hidden])){flex-direction:column}#results-panel{width:100%;height:58%;border-left:0;border-top:1px solid var(--line);padding:16px}#tree-region{min-height:35%}.panel-head{top:-16px}#rubric-dialog{inset:65px 10px 10px}}
+</style></head><body>
+<header><h1>Arena tree</h1><p>__HEADLINE__</p><div class="tools"><details class="popover" id="answer-picker"><summary>Find answer</summary><div><nav aria-label="All answers">__SIDEBAR__</nav></div></details><button id="rubric-button">Grading rubric</button><details class="popover"><summary>Run details</summary><div><p>__COUNTER__</p><p>Judge scores compare the answers; they are not accuracy percentages.</p><details><summary>Match results</summary>__BRACKET__</details></div></details></div></header>
+<div class="workspace"><section id="tree-region" aria-label="Arena tree"><iframe id="arena-tree" title="Arena tournament tree" sandbox="allow-scripts allow-downloads"></iframe></section><article id="results-panel" hidden aria-label="Selected answer results"><div class="panel-head"><h2 id="selected"></h2><button id="close-results" aria-label="Close results">Close</button></div><p id="badge"></p><div class="tabs" role="tablist"><button role="tab" data-tab="answer">Answer</button><button role="tab" data-tab="implementation">Implementation</button><button role="tab" data-tab="archify">Archify</button></div><p id="answer-note" class="score">Original answer, unchanged. Implementation guide reflects the required outputs.</p><div id="content"></div></article></div>
+<section id="rubric-dialog" role="dialog" aria-modal="true" aria-labelledby="rubric-title" hidden><div class="panel-head"><h2 id="rubric-title">Grading rubric</h2><button id="close-rubric" aria-label="Close rubric">Close</button></div><details><summary>Rubric used for this run</summary><div id="current-rubric"></div></details><label for="user-rubric">Your grading criteria for the next run</label><p>Describe what a strong answer must achieve, what evidence to check, and what should fail. These criteria accompany the standard scoring rubric.</p><textarea id="user-rubric" placeholder="Example: Require reproducible evidence, cite the exact source, and prioritize a working implementation."></textarea><p class="score">Saved runs keep their recorded grades. Download your rubric and attach it to your next Arena request. Your criteria are frozen before answers are generated.</p><div class="rubric-actions"><button id="download-rubric">Download rubric</button><button id="copy-rubric">Copy Arena start request</button></div><p id="rubric-status" role="status"></p></section>
+<template id="diagram-frame"><iframe sandbox="allow-scripts allow-downloads"></iframe></template>
 <script id="arena-data" type="application/json">__DATA__</script>
 <script>
 'use strict';
-const arena=JSON.parse(document.getElementById('arena-data').textContent);let selected=null,activeTab='answer';
+const arena=JSON.parse(document.getElementById('arena-data').textContent),tree=document.getElementById('arena-tree'),panel=document.getElementById('results-panel');let selected=null,activeTab='answer';
+tree.srcdoc=arena.tree_html;
+function openPanel(){panel.hidden=false;document.getElementById('answer-picker').open=false;}
 function select(id,tab='answer'){
- if(!Object.prototype.hasOwnProperty.call(arena.answers,id)) id=Object.keys(arena.answers)[0];
- if(!id){document.getElementById('content').textContent='Answers pending';return;}
- selected=id;const a=arena.answers[id];activeTab=a.finalist?tab:'answer';
+ if(!Object.prototype.hasOwnProperty.call(arena.answers,id))return;
+ selected=id;const a=arena.answers[id];activeTab=a.finalist?tab:'answer';openPanel();
  document.getElementById('selected').textContent=id;
  document.getElementById('answer-note').hidden=activeTab!=='answer';
  document.getElementById('badge').textContent=(a.champion?'Champion | ':'')+(a.finalist?'Finalist | Artifacts '+a.package_status:'Original answer');
@@ -324,11 +420,37 @@ function select(id,tab='answer'){
  else if(activeTab==='answer'&&a.status==='ready'){body.innerHTML=a.html;}
  else{body.textContent=activeTab==='answer'?(a.diagnostic||'Answer pending'):'Required finalist artifacts pending validation';body.className='pending';}
  if(body.childElementCount)body.className='';
- if(location.hash.slice(1)!==id)history.replaceState(null,'','#'+encodeURIComponent(id));
+ history.replaceState(null,'','#'+encodeURIComponent(id));
 }
+function matchResult(id){
+ let match=null;arena.rounds.forEach((r,n)=>r.matches.forEach((m,i)=>{if((m.id||'r'+(n+1)+'-m'+String(i+1).padStart(2,'0'))===id)match=m;}));
+ if(!match)return;openPanel();selected=null;
+ document.getElementById('selected').textContent='Match '+id;
+ document.getElementById('badge').textContent=match.winner?'Winner: '+match.winner:'Judgment pending';
+ document.querySelectorAll('[data-tab]').forEach(b=>b.hidden=true);document.getElementById('answer-note').hidden=true;
+ const body=document.getElementById('content');body.replaceChildren();
+ const reason=document.createElement('p');reason.textContent=match.reason||'Judgment pending';body.appendChild(reason);
+ [match.a,match.b].forEach(aid=>{if(!arena.answers[aid])return;const b=document.createElement('button');b.textContent='Read '+aid+(match.scores&&match.scores[aid]!==undefined?' | Score '+match.scores[aid]:'');b.onclick=()=>select(aid);body.appendChild(b);});
+ history.replaceState(null,'','#match='+encodeURIComponent(id));
+}
+window.addEventListener('message',event=>{
+ if(event.source!==tree.contentWindow||!event.data||event.data.type!=='arena-node-selected'||typeof event.data.id!=='string')return;
+ const id=event.data.id;if(id.startsWith('draft_'))select(id.slice(6));else if(arena.answers[id])select(id);else if(id==='arena'&&arena.champion)select(arena.champion);else matchResult(id.replace('_','-'));
+});
 document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.answer)));
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>select(selected,b.dataset.tab)));
-window.addEventListener('hashchange',()=>select(decodeURIComponent(location.hash.slice(1))));
-select(decodeURIComponent(location.hash.slice(1))||arena.champion);
+function closeResults(){panel.hidden=true;history.replaceState(null,'',location.pathname+location.search);}
+document.getElementById('close-results').onclick=closeResults;
+function restoreHash(){let hash;try{hash=decodeURIComponent(location.hash.slice(1));}catch(e){return;}if(hash.startsWith('match='))matchResult(hash.slice(6));else if(hash.startsWith('focus=')){const node=hash.slice(6);if(node.startsWith('draft_'))select(node.slice(6));else matchResult(node.replace('_','-'));}else if(hash)select(hash);}
+window.addEventListener('hashchange',restoreHash);restoreHash();
+const rubricDialog=document.getElementById('rubric-dialog'),rubricInput=document.getElementById('user-rubric'),rubricStatus=document.getElementById('rubric-status');
+document.getElementById('current-rubric').innerHTML=arena.rubric_html;
+try{rubricInput.value=localStorage.getItem('arena-user-rubric-draft')||'';}catch(e){}
+rubricInput.addEventListener('input',()=>{try{localStorage.setItem('arena-user-rubric-draft',rubricInput.value);}catch(e){}});
+document.getElementById('rubric-button').onclick=()=>{rubricDialog.hidden=false;rubricInput.focus();};document.getElementById('close-rubric').onclick=()=>{rubricDialog.hidden=true;document.getElementById('rubric-button').focus();};
+function rubricText(){const text=rubricInput.value;if(!text.trim()){rubricStatus.textContent='Enter your grading criteria first.';rubricInput.focus();return null;}return text;}
+document.getElementById('download-rubric').onclick=()=>{const text=rubricText();if(text===null)return;const url=URL.createObjectURL(new Blob([text],{type:'text/markdown;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='user-rubric.md';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);rubricStatus.textContent='Rubric downloaded. Give this file to Arena before starting the next run.';};
+document.getElementById('copy-rubric').onclick=async()=>{const text=rubricText();if(text===null)return;try{await navigator.clipboard.writeText('Run Arena with 16 fixed answers. Before starting, save the following user grading criteria as user-rubric.md and initialize with --rubric-file user-rubric.md. Give the frozen criteria to all competitors and judges.\\n\\nUSER GRADING CRITERIA\\n'+text);rubricStatus.textContent='Start request copied. Paste it into your Arena chat with the task.';}catch(e){rubricStatus.textContent='Clipboard unavailable. Download the rubric and give it to Arena with your task.';}};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!rubricDialog.hidden)document.getElementById('close-rubric').click();else closeResults();}});
 if(location.protocol!=='file:')setInterval(async()=>{try{const r=await fetch(__STATE_FILE__,{cache:'no-store'});if(r.ok&&(await r.json()).state_sha256!==arena.state_sha256)location.reload();}catch(error){}},5000);
 </script></body></html>'''
