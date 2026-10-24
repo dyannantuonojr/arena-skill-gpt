@@ -25,3 +25,5 @@ coordinator overhead are separate. Old saved-run fixtures exercise compatibility
 new runs cannot finish without accepted packages and a current complete viewer.
 Unsigned receipts bind files to reported checks; they do not attest renderer identity
 or semantic truth. A tournament winner is not certification of general accuracy.
+
+The published workflow diagram is pinned to source commit b3ccf5d160d9f8bfdffbc1820f776737f4077eef; its required-output flow, all four Archify gates and exact artifact/candidate hashes were checked. Final browser interaction also verified bracket selection and both required guides/diagrams, with the user selection restored.

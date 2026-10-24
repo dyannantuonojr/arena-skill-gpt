@@ -23,4 +23,4 @@
 - [x] Test and implement a reusable all-answer viewer with collapsed scope sections.
 - [x] Add artifact phase, acceptance command, hash validation and report delivery gate.
 - [x] Generate two current finalist packages with real Archify checks.
-- [ ] Browser-test current viewer, independently review, run full CI and publish.
+- [x] Browser-test current viewer, independently review, run full CI and publish.
