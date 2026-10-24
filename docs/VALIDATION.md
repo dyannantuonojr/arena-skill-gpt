@@ -19,3 +19,5 @@ accuracy. Native worker scheduling and retry limits remain instructions interpre
 by the host, not an autonomous Python model runner or an OS sandbox. A selected
 answer may still be wrong. Archify automation verifies diagram artifact properties;
 it does not prove the diagram's semantic truth. Diagram receipts accompany its HTML.
+
+The default workflow diagram pins code commit `27c62901a490e2bb4df88aa8e412f91938bf87a5`. All Archify gates and exact candidate/HTML hashes were verified against its review-select receipt.

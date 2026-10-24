@@ -25,5 +25,5 @@
 - [x] Run all tests including CLI simulations of both modes.
 
 ### Task 2: Distribution
-- [ ] Update prompts, README, manifest metadata and source-backed Archify diagram.
-- [ ] Independently review, address findings, validate skill and publish.
+- [x] Update prompts, README, manifest metadata and source-backed Archify diagram.
+- [x] Independently review, address findings, validate skill and publish.
