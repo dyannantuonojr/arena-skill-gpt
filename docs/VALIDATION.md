@@ -57,3 +57,24 @@ The Task & rubric editor displays the original task before grading criteria;
 its combined start request preserves exact task/criteria text and newlines.
 Account sign-in and plan access remain user/host responsibilities, with linked
 OpenAI instructions. No model API key or credentials are added by this bundle.
+
+
+Direct app (v4.0): 112 tests ran successfully on the Windows host; three filesystem
+symlink tests skipped because this host cannot create them. Fourteen runner tests
+include a complete simulated 33-job bracket, bounded retries, accepted-output
+hashes, rejection of cross-worker changes, precreated-output ownership, viewer and
+asset repair, and real OS process-tree cancellation with no surviving grandchild.
+Eight HTTP tests exercise loopback Host/Origin/nonce checks, input validation,
+duplicate starts, cancellation and restricted static paths. Fixture outputs are
+explicitly software tests, not model evidence.
+
+Real signed-in Codex probes returned ARENA_UI_READY and wrote ARENA_FILE_READY
+through the same workspace-write CLI mode, without Arena reading any credentials
+or requiring API keys. Browser interaction with a separate labeled fixture server
+submitted exact task/rubric text, navigated automatically to the tree, read an
+answer node and cancelled the run. The fixture was closed afterward; the real app
+is ready for the user's chosen question. No full real 33-job tournament was
+launched as part of these checks. The existing earlier real tournament is retained.
+Independent review's process-tree cancellation, unowned-output skipping, and stale
+viewer-loop findings are fixed and covered by regressions. Original report files
+remain readable; the direct Start button requires arena_web.py to be running.

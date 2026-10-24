@@ -8,51 +8,56 @@ Each competitor gets the same task and a distinct strategy card. The 16 submitte
 
 The original critique-and-revision process remains available with explicit `--mode evolve`: 91 core jobs plus two required packages = 93 worker jobs. Existing saved runs without a mode keep their original evolving behavior.
 
+## Run the Arena app
+
+Sign into Codex with your own ChatGPT account, then start the local app:
+
+```bash
+codex login
+python skills/arena/arena_web.py --port 8767
+```
+
+Open the printed loopback URL. Enter your **question**, add optional **grading
+criteria**, and click **Start Arena**. The app saves the inputs, runs three
+independent Codex worker sessions at a time, and updates the same interactive tree.
+Click any answer or match to read its results. Both finalists get required
+implementation and Archify tabs. **Stop run** cancels the app's worker processes.
+No prompt copying or return to a chat is required.
+
+The app needs Python 3.8+, Node 18+, Codex CLI signed in with ChatGPT, and an
+installed Chrome/Chromium/Edge browser. On Windows it also discovers the desktop
+app's bundled native Codex executable. If Codex is not installed, use the
+[official setup instructions](https://learn.chatgpt.com/docs/non-interactive-mode).
+Custom executable paths can be supplied with `--codex PATH` and `--node PATH`.
+
+Your ChatGPT account's access and usage limits apply. Arena does not create an
+account, buy a plan, read authentication tokens, or require an additional model API
+key. It uses Codex's existing sign-in. See [OpenAI's account guide](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan).
+The fixed 33-job count excludes retry attempts and renderer/coordinator overhead.
+
 ## Requirements and compatibility
 
-Use a ChatGPT/Codex environment with **Python 3.8+, shared writable files, independent subagent tools, Node 18+ and an installed Chrome/Chromium/Edge browser**. Python bookkeeping and the viewer use only the standard library; the credited Archify renderer is bundled inside the skill. No API keys or external model service are required by this skill. Normal model usage limits still apply.
-
-No separate Archify clone, npm install, or Git submodule is needed. Installing
-`skills/arena` includes the pinned renderer, its authoring instructions, and its
-licenses. The [credited Archify fork](https://github.com/dyannantuonojr/archify)
+All application and renderer sources are included in this repository. Installing
+or copying the entire `skills/arena` folder carries the pinned Archify renderer,
+authoring instructions, and original licenses; no separate Archify clone, Git
+submodule, or renderer npm install is needed. The [credited Archify fork](https://github.com/dyannantuonojr/archify)
 retains [tt-a1i/archify](https://github.com/tt-a1i/archify) as its upstream.
-
-Check the installed runtime before starting jobs:
 
 ```bash
 python skills/arena/arena_setup.py --check --probe-browser --json
 ```
 
-Use the path to your installed skill if it differs. This checks local runtimes and
-bundle integrity; the coordinator separately checks native worker tools. A missing
-browser or runtime is reported before job spending. See [bundle details and
-credits](docs/ARCHIFY_BUNDLE.md).
+The app also checks Codex account readiness before starting workers. Local
+execution uses separate `codex exec` sessions with workspace-write permissions,
+not API calls from Arena. Each worker has a fresh context; this does not guarantee
+statistically independent errors or a correct winner. The app binds only to
+loopback and accepts run-start requests only from its own UI.
 
-Independent agent tools are host commands for starting fresh workers and waiting
-for their results (for example `spawn_agent` and `wait_agent`). They let each answer
-and judge run in a separate context; Arena itself is a coordinator, not a model
-server. Separate contexts reduce shared conversation history, but do not guarantee
-independent errors or greater accuracy.
-
-A plain ChatGPT chat without these tools cannot run the independent-agent tournament. Uploading the prompt alone does not enable agents. The skill checks capabilities and stops honestly rather than simulating independent workers. Installing a plugin also does not grant missing runtime capabilities.
-
-## Start here: account and installation
-
-You install Arena into a compatible agent environment, not into a subscription.
-Sign into Codex with your own ChatGPT account; your account's available features
-and usage limits apply. See [OpenAI's sign-in and plan guide](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan).
-This repository does not create accounts, buy plans, handle credentials, or enable
-missing agent tools. Its instructions and setup checker guide you through the
-software requirements. There is no additional Arena model API key.
-
-1. Open a compatible Codex/ChatGPT desktop environment and sign in yourself.
-2. Install the Arena skill with the instruction below. The renderer comes with it.
-3. Ask the host to run Arena's setup checks and confirm native worker tools.
-4. Supply your question and optional grading rubric, then ask to run Arena.
-
-The **Task & rubric** panel prepares a copied start request. Paste that request
-into the host chat to authorize a new run; this local report is not a subscription
-portal or an autonomous model server.
+The skill can alternatively run through a host chat with native worker tools such
+as `spawn_agent` and `wait_agent`. Those tools are needed for that chat workflow;
+the standalone app supplies independent sessions through Codex CLI instead.
+Uploading the instructions to a plain chat does not create either runtime.
+See [bundled runtime setup and credits](docs/ARCHIFY_BUNDLE.md).
 
 ## Install in Codex
 
@@ -130,12 +135,11 @@ files stop resume and judging; restore the original bytes or start a new run. Ex
 historical runs without rubric digests remain compatible. Omitting `--rubric-file`
 uses the default rubric.
 
-The viewer's **Task & rubric** panel shows the original question above the rubric.
-Edit the question for a new run, add optional criteria, and copy the combined start
-request into the Arena chat. The rubric editor also exports `user-rubric.md` for
-your **next run** via `--rubric-file PATH`.
-Editing or exporting criteria in the browser does not change or regrade the saved
-run, including a completed run; its scores and winners stay recorded as judged.
+The app's **Task & rubric** panel puts the original question above the criteria.
+**Start Arena** submits both directly to the local coordinator. Editing the form
+never changes a saved run or regrades its answers; pressing Start creates a new
+run. Rubric download remains available for exporting criteria. Offline exported
+reports are readable, but only the running app can execute new jobs.
 
 ## Arena tree workspace
 

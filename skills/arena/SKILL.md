@@ -18,6 +18,28 @@ The original critique/revision structure is available only with explicit
 It is not the default. Existing saved runs retain historical mode/delivery rules;
 new runs require every original answer browsable and both finalist packages.
 
+## Direct app workflow
+
+When the user wants to start and operate Arena in its UI, launch arena_web.py with
+an available Python interpreter and show its printed loopback URL. The app's
+question and rubric form submits directly with Start Arena. Do not ask the user
+to copy a prompt back into chat. Keep an existing app/run available unless the
+user asks to stop it. Use an unused port for a separate instance.
+
+This mode needs a locally installed Codex CLI signed in with ChatGPT, Node 18+,
+and Chrome/Chromium/Edge. arena_web.py checks readiness and launches separate
+codex exec worker sessions, with at most three concurrently, rather than requiring
+native host subagent tools. It preserves the user's CLI model configuration and
+Codex-managed authentication. Never read, copy, or embed auth tokens. Missing
+sign-in is a setup step for the user, not a reason to request API keys. Use
+--codex PATH and --node PATH for nonstandard runtime locations.
+
+A Start click authorizes the displayed 33 worker jobs. Keep execution, status,
+failures, cancellation, answer inspection and both finalist guides in the tree UI.
+Static exports remain readable but cannot start workers without the app server.
+The following native-chat coordination workflow remains available when explicitly
+requested or when the user is already operating Arena through host worker tools.
+
 ## Check capabilities and bind commands
 
 Locate this loaded skill's directory and adjacent bracket.py. Use an available
@@ -87,12 +109,10 @@ freeze both files at initialization. Resume and judging reject edits or missing 
 restore the original bytes or start a new run. Historical states without rubric digests
 remain readable. Editing a completed run does not regrade it.
 
-The viewer's Task & rubric panel puts the original task prompt above the criteria,
-pre-fills it from RUN/task.md, and copies both into a new-run request. Editing this
-form never changes an existing run or starts jobs by itself. Its rubric editor also
-exports user-rubric.md. Use that exported file with `ARENA init --rubric-file PATH` on the next run.
-Browser edits and exports do not mutate the saved run, its criteria, scores or winners,
-and do not trigger regrading.
+The app's Task & rubric panel puts the original task before grading criteria and
+submits both directly with Start Arena. It never mutates or regrades an existing
+run. Do not substitute a copied-prompt handoff for app execution. The rubric can
+also be downloaded for CLI use on a later run.
 
 ## Run the saved bracket
 
