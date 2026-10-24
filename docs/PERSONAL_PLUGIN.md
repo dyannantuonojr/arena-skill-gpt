@@ -116,3 +116,8 @@ change Codex sign-in or add a model API billing account.
 - [MCP UI resources](https://developers.openai.com/plugins/build/chatgpt-ui)
 - [Private tunnel setup](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
 - [Custom MCP connection](https://developers.openai.com/api/docs/guides/custom-mcp-server)
+
+
+## Grudge Match in the same plugin
+
+Use the **Arena / Grudge Match** toggle above the question in the same UI. The server also exposes **Open Grudge Match** directly, with the question above optional rubric guidance. Its five jobs produce a normal answer, independent peer review, synthesis, an independent scored comparison, and Archify for the winner only. Opening it does not start workers. Existing Arena tools are unchanged. See [Grudge Match](GRUDGE_MATCH.md) for usage and output IDs. Refresh the connected plugin tools after upgrading the server to discover the new tools.

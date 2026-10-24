@@ -27,6 +27,9 @@ def public_status(value):
 
 
 class ArenaService:
+    run_prefix = 'arena-'
+    total_jobs = 33
+
     def __init__(self, data_root, runner, database=None):
         raw = Path(data_root).absolute()
         B.artifacts._reject_redirects(raw)
@@ -62,6 +65,12 @@ class ArenaService:
             raise ValueError('Invalid saved data')
         return value
 
+    def has_unfinished_run(self):
+        """Read durable reservations, including work interrupted by a restart."""
+        with self._db() as db:
+            runs = list(db.execute("SELECT run FROM requests WHERE state IN ('reserved','started')"))
+        return any(self.get_run_status(run_id).get('status') not in TERMINAL for run_id, in runs)
+
     def start_run(self, question, guidance='', request_id=None):
         identifier(request_id)
         if not isinstance(question, str) or not question.strip() or len(question) > MAX_TEXT:
@@ -83,7 +92,7 @@ class ArenaService:
                     if self.get_run_status(run_id).get('status') not in TERMINAL:
                         raise ValueError('An active or interrupted reservation requires operator recovery')
                     db.execute("UPDATE requests SET state='finished' WHERE run=?", (run_id,))
-                run_id = 'arena-' + uuid.uuid4().hex
+                run_id = self.run_prefix + uuid.uuid4().hex
                 db.execute('INSERT INTO requests VALUES (?,?,?,?)', (request_id, digest, run_id, 'reserved'))
             # Commit the stable identity BEFORE workers can start. A failed launch
             # keeps its reservation; retrying never launches it again.
@@ -109,7 +118,7 @@ class ArenaService:
             with self._db() as db:
                 row = db.execute('SELECT run FROM requests WHERE run=?', (run_id,)).fetchone()
             if row:
-                return {'id': run_id, 'status': 'interrupted', 'completed': 0, 'total': 33}
+                return {'id': run_id, 'status': 'interrupted', 'completed': 0, 'total': self.total_jobs}
             raise ValueError('Unknown run')
 
     def _arena(self, run_id):

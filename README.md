@@ -8,6 +8,27 @@ Each competitor gets the same task and a distinct strategy card. The 16 submitte
 
 The original critique-and-revision process remains available with explicit `--mode evolve`: 91 core jobs plus two required packages = 93 worker jobs. Existing saved runs without a mode keep their original evolving behavior.
 
+## Grudge Match
+
+A smaller workflow is available in the same personal plugin. Open Arena and select the **Grudge Match** toggle above the question field (or
+ask **“Open Grudge Match”** directly), enter your question above the optional
+grading guidance, and click
+**Start Grudge Match** only when ready.
+
+1. A normal original answer.
+2. An independent peer review of that answer.
+3. A standalone synthesis incorporating supported review findings.
+4. An independent judge compares anonymously labelled copies of the original
+   and synthesis under the identical frozen rubric.
+5. **Only the winner** receives an implementation guide and native Archify diagram.
+
+**Five worker jobs before retries.** Either original or synthesis can win.
+Each output is readable from the workflow tree. The comparison shows criterion
+scores and weighted totals; these are rubric scores, not measured accuracy
+percentages. Opening the UI starts no workers. Grudge Match and Arena share the
+owner's account and allow one active workflow at a time. Existing Arena remains
+16 answers and 33 worker jobs. See [Grudge Match details](docs/GRUDGE_MATCH.md).
+
 ## Run the Arena app
 
 For the optional personal MCP plugin interface, see
