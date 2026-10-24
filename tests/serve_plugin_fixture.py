@@ -56,8 +56,10 @@ const views=__DATA__;let state=views.initial,starts=0,failNextRead=false;window.
     ui = Path(__file__).resolve().parents[1] / 'skills/arena/plugin/ui/index.html'
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path == '/':
+            if self.path in ('/', '/?narrow=1'):
                 content = host.encode()
+                if self.path == '/?narrow=1':
+                    content = content.replace(b'iframe{width:100%;', b'iframe{width:700px;max-width:100%;')
             elif self.path.split('?')[0] == '/ui':
                 content = ui.read_bytes()
                 if args.grudge:
