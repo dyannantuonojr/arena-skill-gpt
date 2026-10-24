@@ -1,18 +1,17 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "arena-skill",
-  "description": "The Arena skill for Claude Code",
+  "name": "arena-skill-gpt",
+  "description": "Sixteen independent competitors, attack and defense, and rubric-based judging for capable ChatGPT and Codex hosts.",
   "owner": {
-    "name": "Jake Schincariol",
-    "url": "https://opusjake.ai"
+    "name": "dyannantuonojr"
   },
   "plugins": [
     {
-      "name": "arena-skill",
-      "description": "Spins up 100 sub-agents on the exact same task, each with a different strategy card, and runs them through an attack, defend and judge bracket until one answer survives.",
+      "name": "arena-skill-gpt",
+      "description": "Sixteen independent competitors, attack and defense, and rubric-based judging for capable ChatGPT and Codex hosts.",
       "source": "./",
       "category": "productivity",
-      "homepage": "https://github.com/Jakeschincariol/arena-skill"
+      "homepage": "https://github.com/dyannantuonojr/arena-skill-gpt"
     }
   ]
 }

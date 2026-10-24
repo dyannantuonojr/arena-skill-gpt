@@ -3,10 +3,10 @@
 
 The whole arena lives in one JSON file (arena.json), so the orchestrator never
 loses track of who is alive, who fought whom and what happens next, even if its
-own context gets compacted halfway through a 100-agent run.
+own context gets compacted halfway through a 16-agent run.
 
-    python3 bracket.py plan --agents 100             # rounds, sub-agent calls and waves. Writes nothing.
-    python3 bracket.py init --agents 100 --seed 7 --task-file task.md [--baseline-file old.md]
+    python3 bracket.py plan --agents 16             # rounds, sub-agent calls and waves. Writes nothing.
+    python3 bracket.py init --agents 16 --seed 7 --task-file task.md [--baseline-file old.md]
     python3 bracket.py init --quick --task "..."     # 16 agents
     python3 bracket.py next                          # what to do now, and the exact command for it
     python3 bracket.py prompts <phase>               # write the sub-agent briefs, list the jobs left, in waves
@@ -32,6 +32,7 @@ import os
 import random
 import re
 import sys
+import shlex
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -40,9 +41,10 @@ STRATEGIES_PATH = os.path.join(HERE, "strategies.json")
 SKILL_PATH = os.path.join(HERE, "SKILL.md")
 RUBRIC_PATH = os.path.join(HERE, "rubric.md")
 
-DEFAULT_AGENTS = 100
+DEFAULT_AGENTS = 16
+MAX_AGENTS = 16
 QUICK_AGENTS = 16
-DEFAULT_WAVE = 10          # Claude Code runs at most 10 tool calls at once by default
+DEFAULT_WAVE = 1           # Portable default; use only runtime-confirmed worker capacity
 ROOT = ".arena"
 LATEST = "LATEST"
 STATE_FILE = "arena.json"
@@ -262,7 +264,11 @@ def prompt_path(d, rnd, job_id):
 
 
 def _has_output(path):
-    return os.path.isfile(path) and os.path.getsize(path) > 0
+    if not os.path.isfile(path):
+        return False
+    with open(path, encoding="utf-8-sig", errors="replace") as fh:
+        text = fh.read().strip()
+    return bool(text) and text != "NO OUTPUT"
 
 
 # ---------------------------------------------------------------- the bracket
@@ -447,13 +453,15 @@ def weighted_total(scores):
     total = 0.0
     for key, weight in WEIGHTS:
         v = scores.get(key)
-        if isinstance(v, bool):
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
             return None
         try:
             v = float(v)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return None
-        total += max(0.0, min(10.0, v)) * weight
+        if not math.isfinite(v) or not 0 <= v <= 10:
+            return None
+        total += v * weight
     return round(total / 10.0, 2)
 
 
@@ -499,10 +507,16 @@ def decide(verdict, a, b):
     ta, tb = weighted_total(sa), weighted_total(sb)
     totals = {a: ta, b: tb}
     if ta is None or tb is None:
-        if pick:
-            return pick, totals, "scores incomplete, used the judge's pick"
-        raise ArenaError("verdict has neither complete scores nor a clear winner")
-    fa, fb = _truthy(sa.get("fatal")), _truthy(sb.get("fatal"))
+        raise ArenaError("verdict needs complete finite numeric scores between 0 and 10 for both solutions")
+    if not isinstance(sa.get("fatal"), bool) or not isinstance(sb.get("fatal"), bool):
+        raise ArenaError("verdict needs an explicit boolean fatal flag for both solutions")
+    fa, fb = sa["fatal"], sb["fatal"]
+    standing = verdict.get("standing")
+    if "standing" in verdict:
+        if not isinstance(standing, dict) or any(
+                not isinstance(standing.get(key), list) or
+                not all(isinstance(item, str) for item in standing[key]) for key in (a, b)):
+            raise ArenaError("standing attacks must be lists of strings for both solutions")
     if fa != fb:
         winner = b if fa else a
     elif ta != tb:
@@ -571,6 +585,10 @@ def collect(state):
         with open(path, encoding="utf-8", errors="replace") as fh:
             v = extract_json(fh.read())
         try:
+            if not isinstance(v, dict) or v.get("match") != m["id"]:
+                raise ArenaError("verdict match must equal %s" % m["id"])
+            if "standing" not in v:
+                raise ArenaError("match verdict needs standing attack lists for both solutions")
             winner, totals, note = decide(v, m["a"], m["b"])
         except ArenaError as e:
             os.replace(path, path + ".unreadable")
@@ -778,6 +796,8 @@ def next_action(state):
 # ---------------------------------------------------------------- plan
 
 def plan_rows(n, wave=DEFAULT_WAVE):
+    if n < 1 or wave < 1:
+        raise ArenaError("agents and wave must be at least 1")
     rows = []
     for rnd, alive in enumerate(bracket_sizes(n)[:-1], start=1):
         m = alive // 2
@@ -825,7 +845,10 @@ def save_state(state):
 
 
 def _cmd(*parts):
-    return 'python3 "%s" %s' % (SELF, " ".join(parts))
+    args = [sys.executable, SELF] + list(parts)
+    if os.name == "nt":
+        return "& " + " ".join("'" + str(arg).replace("'", "''") + "'" for arg in args)
+    return " ".join(shlex.quote(str(arg)) for arg in args)
 
 
 def _card_line(card):
@@ -837,9 +860,10 @@ def _card_line(card):
 def _agents_arg(args):
     if args.quick and args.agents is not None:
         raise ArenaError("pass --quick or --agents, not both")
-    if args.quick:
-        return QUICK_AGENTS
-    return DEFAULT_AGENTS if args.agents is None else args.agents
+    n = QUICK_AGENTS if args.quick else (DEFAULT_AGENTS if args.agents is None else args.agents)
+    if not 1 <= n <= MAX_AGENTS:
+        raise ArenaError("--agents must be between 1 and %d in this fork" % MAX_AGENTS)
+    return n
 
 
 def cmd_plan(args):
@@ -914,7 +938,7 @@ def cmd_init(args):
     print("%d rounds (%s). %d sub-agent calls in %d waves of %d%s."
           % (t["rounds"], " -> ".join(str(s) for s in bracket_sizes(n)), t["calls"] + (1 if baseline else 0),
              t["waves"] + (1 if baseline else 0), args.wave, ", including the final check" if baseline else ""))
-    print("next: %s" % _cmd("next"))
+    print("next: %s" % _cmd("next", "--dir", state["dir"]))
     return 0
 
 
@@ -931,17 +955,17 @@ def cmd_next(args):
         print("champion: %s after %d round(s)" % (state["champion"], rounds_played(state)))
     if phase in PHASES:
         print("NEXT: %s. %d of %d job(s) to run." % (phase, len(left), len(jobs)))
-        print("  1. %s" % _cmd("prompts", phase))
+        print("  1. %s" % _cmd("prompts", phase, "--dir", state["dir"]))
         print("  2. launch the jobs it lists, one wave of %d at a time" % state["wave"])
-        print("  3. %s" % _cmd("next"))
+        print("  3. %s" % _cmd("next", "--dir", state["dir"]))
     elif phase == "collect":
         print("NEXT: collect. Every verdict for this step is on disk.")
-        print("  %s" % _cmd("collect"))
+        print("  %s" % _cmd("collect", "--dir", state["dir"]))
     elif phase == "advance":
         print("NEXT: advance. Every match in round %d has a winner." % rd["n"])
-        print("  %s" % _cmd("advance"))
+        print("  %s" % _cmd("advance", "--dir", state["dir"]))
     else:
-        print("DONE. %s" % _cmd("winner"))
+        print("DONE. %s" % _cmd("winner", "--dir", state["dir"]))
     return 0
 
 
@@ -949,7 +973,7 @@ def cmd_prompts(args):
     state = load_state(args)
     jobs = write_prompts(state, args.phase)
     if not jobs:
-        print("nothing to run for %s right now. %s" % (args.phase, _cmd("next")))
+        print("nothing to run for %s right now. %s" % (args.phase, _cmd("next", "--dir", state["dir"])))
         return 0
     left = missing_jobs(jobs)
     w = state["wave"]
@@ -964,10 +988,10 @@ def cmd_prompts(args):
             print("  %-26s %s" % (j["id"], j["prompt"]))
     if left:
         print("")
-        print("Each job is one Agent call: subagent_type general-purpose, description \"arena <job id>\",")
-        print("prompt \"Read <prompt path> and follow it exactly. It is your whole brief.\"")
-        print("A wave is one message with all of its Agent calls. Let it finish before the next wave.")
-    print("then: %s" % _cmd("next"))
+        print("Each job needs a fresh independent worker context; use the native subagent tools.")
+        print("Brief: Read <prompt path> and follow it exactly. It is your whole brief.")
+        print("Never exceed available worker capacity. Wait for completion and release workers between waves.")
+    print("then: %s" % _cmd("next", "--dir", state["dir"]))
     return 0
 
 
@@ -1021,7 +1045,7 @@ def cmd_collect(args):
     results = collect(state)
     save_state(state)
     if not results:
-        print("nothing to collect. %s" % _cmd("next"))
+        print("nothing to collect. %s" % _cmd("next", "--dir", state["dir"]))
         return 0
     bad = 0
     for mid, what, note in results:
@@ -1033,9 +1057,9 @@ def cmd_collect(args):
         done = sum(1 for m in rd["matches"] if m["winner"])
         print("round %d: %d of %d match(es) recorded" % (rd["n"], done, len(rd["matches"])))
     if bad:
-        print("%d verdict(s) missing or unreadable. Re-run those judges: %s" % (bad, _cmd("next")))
+        print("%d verdict(s) missing or unreadable. Re-run those judges: %s" % (bad, _cmd("next", "--dir", state["dir"])))
         return 1
-    print("then: %s" % _cmd("next"))
+    print("then: %s" % _cmd("next", "--dir", state["dir"]))
     return 0
 
 
@@ -1048,11 +1072,11 @@ def cmd_advance(args):
     print("round %s closed: %d through, %d eliminated"
           % (closing, len(survivors), len(rd["matches"])))
     if state["champion"]:
-        print("CHAMPION: %s. %s" % (state["champion"], _cmd("next")))
+        print("CHAMPION: %s. %s" % (state["champion"], _cmd("next", "--dir", state["dir"])))
     else:
         nr = state["rounds"][-1]
         print("round %d open: %d match(es)%s. %s"
-              % (nr["n"], len(nr["matches"]), ", bye %s" % nr["bye"] if nr["bye"] else "", _cmd("next")))
+              % (nr["n"], len(nr["matches"]), ", bye %s" % nr["bye"] if nr["bye"] else "", _cmd("next", "--dir", state["dir"])))
     return 0
 
 
@@ -1118,7 +1142,7 @@ def cmd_winner(args):
     if rep is None:
         rd = current_round(state)
         print("no winner yet: round %s, %d alive. %s"
-              % (rd["n"] if rd else "?", len(alive_ids(state)), _cmd("next")))
+              % (rd["n"] if rd else "?", len(alive_ids(state)), _cmd("next", "--dir", state["dir"])))
         return 1
     if args.json:
         print(json.dumps(rep, indent=1))
@@ -1179,7 +1203,7 @@ def build_parser():
     s.add_argument("--task-file", help="the task, word for word, as every competitor will get it")
     s.add_argument("--task", help="the task as a string, instead of --task-file")
     s.add_argument("--baseline-file", help="the answer the user was not satisfied with")
-    s.add_argument("--wave", type=int, default=DEFAULT_WAVE, help="parallel sub-agents per wave (default 10)")
+    s.add_argument("--wave", type=int, default=DEFAULT_WAVE, help="parallel workers per wave (default 1; bounded by runtime capacity)")
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser("next", parents=[common], help="what to do now")

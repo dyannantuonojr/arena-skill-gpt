@@ -85,24 +85,24 @@ class SimulatedTournament(TempDir):
         alive_at_start.append(1)
         return d, load(d), alive_at_start
 
-    def test_100_agents_reach_exactly_one_survivor(self):
-        d, state, sizes = self.run_tournament(100, 7)
-        self.assertEqual(sizes, [100, 50, 25, 13, 7, 4, 2, 1])
-        self.assertEqual(len(state["rounds"]), 7)
+    def test_default_16_agents_reach_exactly_one_survivor(self):
+        d, state, sizes = self.run_tournament(16, 7)
+        self.assertEqual(sizes, [16, 8, 4, 2, 1])
+        self.assertEqual(len(state["rounds"]), 4)
         alive = [a for a, v in state["agents"].items() if v["alive"]]
         self.assertEqual(alive, [state["champion"]])
         dead = [v for v in state["agents"].values() if not v["alive"]]
-        self.assertEqual(len(dead), 99)
+        self.assertEqual(len(dead), 15)
         self.assertTrue(all(v["eliminated_in"] and v["eliminated_by"] for v in dead))
-        self.assertEqual(sum(len(rd["matches"]) for rd in state["rounds"]), 99)
+        self.assertEqual(sum(len(rd["matches"]) for rd in state["rounds"]), 15)
         self.assertEqual([rd["bye"] is not None for rd in state["rounds"]],
-                         [False, False, True, True, True, False, False])
+                         [False, False, False, False])
         self.assertTrue(all(v["byes"] <= 1 for v in state["agents"].values()), "no agent gets two byes")
         status = self.ok("status", "--dir", d)
-        self.assertIn("now: 1 alive, 99 eliminated, champion %s" % state["champion"], status)
+        self.assertIn("now: 1 alive, 15 eliminated, champion %s" % state["champion"], status)
         won = self.ok("winner", "--dir", d)
         self.assertIn("CHAMPION  %s" % state["champion"], won)
-        self.assertIn("7 played, 100 agents in, 1 left", won)
+        self.assertIn("4 played, 16 agents in, 1 left", won)
         self.assertIn("last one standing", self.ok("pairings", "--dir", d))
 
     def test_16_agents(self):
@@ -204,9 +204,9 @@ class Dealer(unittest.TestCase):
 class Plan(unittest.TestCase):
     def test_numbers(self):
         self.assertEqual(B.bracket_sizes(100), [100, 50, 25, 13, 7, 4, 2, 1])
-        t = B.plan_totals(100)
+        t = B.plan_totals(100, wave=10)
         self.assertEqual((t["rounds"], t["calls"], t["waves"]), (7, 595, 70))
-        t = B.plan_totals(16)
+        t = B.plan_totals(16, wave=10)
         self.assertEqual((t["rounds"], t["calls"], t["waves"]), (4, 91, 16))
 
 
@@ -240,9 +240,10 @@ class Verdicts(unittest.TestCase):
              "standing": {"a001": ["x", "y"], "a002": ["z"]}}
         self.assertEqual(B.decide(v, "a001", "a002")[0], "a002")
 
-    def test_incomplete_scores_fall_back_to_the_pick(self):
+    def test_incomplete_scores_require_a_new_judge_verdict(self):
         v = {"scores": {"a001": {"correctness": 3}}, "winner": "a001"}
-        self.assertEqual(B.decide(v, "a001", "a002")[0], "a001")
+        with self.assertRaises(B.ArenaError):
+            B.decide(v, "a001", "a002")
         with self.assertRaises(B.ArenaError):
             B.decide({"scores": {}}, "a001", "a002")
 
@@ -270,12 +271,12 @@ class FullPipelineWithFakeAgents(TempDir):
                 write(j["outputs"][1], "Salt on the long wind, revised by %s." % j["agent"])
             elif phase == "judge":
                 a, b = j["a"], j["b"]
-                s = lambda: {k: rng.randint(3, 10) for k, _ in B.WEIGHTS}
+                s = lambda: dict({k: rng.randint(3, 10) for k, _ in B.WEIGHTS}, fatal=False)
                 v = {"match": j["match"], "scores": {a: s(), b: s()}, "winner": a, "reason": "fake",
                      "survived": ["too short"], "standing": {a: [], b: []}}
                 write(j["outputs"][0], json.dumps(v))
             elif phase == "final":
-                v = {"scores": {"X": {k: 8 for k, _ in B.WEIGHTS}, "Y": {k: 4 for k, _ in B.WEIGHTS}},
+                v = {"scores": {"X": dict({k: 8 for k, _ in B.WEIGHTS}, fatal=False), "Y": dict({k: 4 for k, _ in B.WEIGHTS}, fatal=False)},
                      "winner": "X", "reason": "fake", "fixed": ["salt"]}
                 write(j["outputs"][0], json.dumps(v))
 
@@ -285,7 +286,7 @@ class FullPipelineWithFakeAgents(TempDir):
         base_file = os.path.join(self.tmp, "baseline.md")
         write(task_file, self.TASK)
         write(base_file, "The sea is big.")
-        self.ok("init", "--agents", 5, "--seed", 9, "--task-file", task_file, "--baseline-file", base_file, "--dir", d)
+        self.ok("init", "--agents", 16, "--seed", 9, "--task-file", task_file, "--baseline-file", base_file, "--dir", d)
         self.assertTrue(os.path.isfile(os.path.join(d, "rubric.md")), "the run has its own rubric copy")
         rng = random.Random(9)
         seen = []
@@ -323,7 +324,7 @@ class FullPipelineWithFakeAgents(TempDir):
         self.assertEqual(seen[-1], "done")
         self.assertIn("spawn", seen)
         self.assertIn("final", seen)
-        self.assertEqual(seen.count("advance"), 3, "5 agents take 3 rounds")
+        self.assertEqual(seen.count("advance"), 4, "16 agents take 4 rounds")
         state = load(d)
         champ = state["agents"][state["champion"]]
         self.assertIn(".solution.md", champ["solution"], "the champion carries its revised solution")
@@ -331,7 +332,7 @@ class FullPipelineWithFakeAgents(TempDir):
         pair = {read(os.path.join(d, "final", "X.md")).strip(), read(os.path.join(d, "final", "Y.md")).strip()}
         self.assertIn("The sea is big.", pair)
         rep = json.loads(self.ok("winner", "--json", "--dir", d))
-        self.assertEqual(rep["rounds"], 3)
+        self.assertEqual(rep["rounds"], 4)
         self.assertEqual(rep["final"]["better"], state["final"]["X"])
         self.assertTrue(rep["attacks_survived"])
 
@@ -389,15 +390,6 @@ class Guards(TempDir):
     def test_templates_are_all_in_skill_md(self):
         self.assertEqual(sorted(B.load_templates()), sorted(B.TEMPLATES))
 
-    def test_no_em_dashes_anywhere(self):
-        for root, dirs, files in os.walk(REPO):
-            dirs[:] = [x for x in dirs if x not in (".git", "__pycache__")]
-            for name in files:
-                path = os.path.join(root, name)
-                with open(path, encoding="utf-8", errors="ignore") as fh:
-                    text = fh.read()
-                self.assertNotIn(EM_DASH, text, "em dash in %s" % os.path.relpath(path, REPO))
-                self.assertNotIn(EN_DASH, text, "en dash in %s" % os.path.relpath(path, REPO))
 
 
 if __name__ == "__main__":

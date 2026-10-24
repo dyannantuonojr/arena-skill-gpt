@@ -1,0 +1,4 @@
+interface:
+  display_name: "Arena 16"
+  short_description: "Compare answers with independent competing agents"
+  default_prompt: "Use $arena to compare solutions to my task with independent critique and judging."

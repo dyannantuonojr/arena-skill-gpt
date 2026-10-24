@@ -1,20 +1,19 @@
 {
-  "name": "arena-skill",
-  "description": "When Claude keeps giving you bad answers, make 100 versions of it fight to the death. Same task, 100 different strategies, a bracket, one answer left. Free Claude Code skill.",
-  "version": "1.0.0",
+  "name": "arena-skill-gpt",
+  "description": "Sixteen independent competitors, attack and defense, and rubric-based judging for capable ChatGPT and Codex hosts.",
+  "version": "1.1.0",
   "author": {
-    "name": "Jake Schincariol",
-    "url": "https://opusjake.ai"
+    "name": "dyannantuonojr"
   },
-  "homepage": "https://github.com/Jakeschincariol/arena-skill",
-  "repository": "https://github.com/Jakeschincariol/arena-skill",
+  "homepage": "https://github.com/dyannantuonojr/arena-skill-gpt",
+  "repository": "https://github.com/dyannantuonojr/arena-skill-gpt",
   "license": "MIT",
   "keywords": [
-    "claude-code",
+    "codex",
+    "chatgpt",
+    "gpt",
     "subagents",
-    "multi-agent",
     "tournament",
-    "arena",
-    "prompting"
+    "arena"
   ]
 }

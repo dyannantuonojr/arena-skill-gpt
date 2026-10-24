@@ -1,0 +1,20 @@
+{
+  "name": "arena-skill-gpt",
+  "description": "Sixteen independent competitors, attack and defense, and rubric-based judging for capable ChatGPT and Codex hosts.",
+  "version": "1.1.0",
+  "author": {
+    "name": "dyannantuonojr"
+  },
+  "homepage": "https://github.com/dyannantuonojr/arena-skill-gpt",
+  "repository": "https://github.com/dyannantuonojr/arena-skill-gpt",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "chatgpt",
+    "gpt",
+    "subagents",
+    "tournament",
+    "arena"
+  ],
+  "skills": "./skills/"
+}
