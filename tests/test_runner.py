@@ -334,6 +334,12 @@ class RunnerTests(unittest.TestCase):
                           ('candidate.json', 'candidate_sha256'), ('review/diagram.finalize-summary.json', 'receipt_sha256')]:
             metadata[key] = R.ArenaRunner._file_hash(package / name)
         state['finalist_packages'] = {'a001': metadata}
+        if os.name == 'nt':
+            import ctypes
+            buffer = ctypes.create_unicode_buffer(32768)
+            self.assertTrue(ctypes.windll.kernel32.GetShortPathNameW(str(run), buffer, len(buffer)))
+            self.assertNotEqual(buffer.value.lower(), str(run.resolve()).lower())
+            state['dir'] = buffer.value  # Exercise real Windows 8.3/long-name equivalence.
         self.runner._arena = state
         self.runner._export_fingerprint = None
         self.runner._refresh()

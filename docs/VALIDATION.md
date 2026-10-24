@@ -78,3 +78,7 @@ launched as part of these checks. The existing earlier real tournament is retain
 Independent review's process-tree cancellation, unowned-output skipping, and stale
 viewer-loop findings are fixed and covered by regressions. Original report files
 remain readable; the direct Start button requires arena_web.py to be running.
+
+Windows CI additionally exposed short/long path alias mismatch during diagram
+publication. The runner now canonicalizes its publication root; a real 8.3 alias
+regression reproduces the failure and passes with the fix.

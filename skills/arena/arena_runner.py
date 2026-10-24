@@ -508,6 +508,9 @@ class ArenaRunner:
         os.replace(str(temporary), str(visual / 'arena-tree.html'))
 
     def _export_view(self, state, root):
+        # Export receipts use canonical paths; normalize Windows 8.3 aliases
+        # before computing asset-relative paths during atomic publication.
+        root = Path(root).resolve()
         viewer = root / 'viewer'
         staging = viewer / '.refresh'
         staging.mkdir(parents=True, exist_ok=True)
