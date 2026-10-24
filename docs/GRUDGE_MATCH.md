@@ -74,3 +74,8 @@ Accepted answers remain frozen. The checker does not silently rewrite them or
 launch another revision. Older five-job matches retain their historical counts
 and four-node viewer; new matches require the evidence stage and total six jobs
 before retries. Arena's 33-job workflow is unchanged.
+
+
+## Questions about supporting documents
+
+Use **Attach files** beneath the question to include XLSX/CSV spreadsheets, selectable-text PDFs, DOCX, TXT or Markdown. The original answer, review, synthesis, checker and judge all receive identical frozen source copies. The checker can cite declared files by exact filename and sheet/cell, page, paragraph or line, and document links open a verified snapshot preview. Supplied document support is labelled separately from independent external confirmation. File handling adds no model job. See [supporting documents](SUPPORTING_DOCUMENTS.md).

@@ -12,6 +12,34 @@ SDK = importlib.util.find_spec('mcp') is not None
 
 @unittest.skipUnless(SDK, 'Install locked optional plugin runtime')
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
+    async def test_upload_and_preview_do_not_start_workers(self):
+        import anyio,json,base64,hashlib
+        from mcp import ClientSession
+        from plugin.server import create_server
+        from arena_service import ArenaService
+        from supporting_documents import DocumentStore
+        from test_service import FakeRunner
+        with tempfile.TemporaryDirectory() as root:
+            runner=FakeRunner();store=DocumentStore(Path(root)/'uploads')
+            server=create_server(ArenaService(Path(root)/'runs',runner,document_store=store),document_store=store)
+            send_server,receive_server=anyio.create_memory_object_stream(10)
+            send_client,receive_client=anyio.create_memory_object_stream(10)
+            low=server._lowlevel_server
+            async with anyio.create_task_group() as group:
+                group.start_soon(functools.partial(low.run,receive_server,send_client,low.create_initialization_options()))
+                async with ClientSession(receive_client,send_server) as client:
+                    await client.initialize()
+                    names={t.name for t in (await client.list_tools()).tools}
+                    self.assertIn('upload_supporting_document',names)
+                    data=b'Name,Amount\nWidgets,42\n'
+                    result=await client.call_tool('upload_supporting_document',{'upload_id':'a'*32,'file_name':'budget.csv','total_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'offset':0,'data_base64':base64.b64encode(data).decode()})
+                    self.assertFalse(result.is_error)
+                    read=await client.call_tool('read_supporting_document',{'document_id':'a'*32,'locator':'CSV!B2'})
+                    self.assertFalse(read.is_error)
+                    self.assertIn('42',read.content[0].text)
+                    self.assertEqual(runner.starts,[])
+                group.cancel_scope.cancel()
+
     async def test_grudge_tools_and_idle_resource(self):
         import anyio
         from mcp import ClientSession

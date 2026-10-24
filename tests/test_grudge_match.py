@@ -61,15 +61,15 @@ class GrudgeTests(unittest.TestCase):
             Path(job['outputs'][0]).write_text('# Fixture '+job['kind'])
         return 0, 'software fixture'
 
-    def run_match(self):
+    def run_match(self,document_ids=None):
         def accept(state, aid):
             directory = Path(B.artifacts.package_dir(state, aid))
             directory.mkdir(parents=True, exist_ok=True)
             (directory/'manifest.json').write_text('{}')
             return {'directory': str(directory)}
         with mock.patch.object(B.artifacts, 'accept_package', side_effect=accept), mock.patch.object(B.artifacts, 'package_valid', side_effect=lambda s,a: a in s.get('finalist_packages',{})):
-            first = self.service.start_run('  Exact task\r\n ', ' Optional rubric\r\n', 'fixture')
-            again = self.service.start_run('  Exact task\r\n ', ' Optional rubric\r\n', 'fixture')
+            first = self.service.start_run('  Exact task\r\n ', ' Optional rubric\r\n', 'fixture',document_ids=document_ids)
+            again = self.service.start_run('  Exact task\r\n ', ' Optional rubric\r\n', 'fixture',document_ids=document_ids)
             self.assertEqual(first['id'], again['id'])
             self.runner._thread.join(12)
             self.assertFalse(self.runner._thread.is_alive())
@@ -114,6 +114,30 @@ class GrudgeTests(unittest.TestCase):
         (self.root/first['id']/'task.md').write_text('different question', encoding='utf-8')
         with self.assertRaises(ValueError):
             GrudgeService(self.root, GrudgeRunner(self.root)).open_arena(first['id'])
+
+    def test_supporting_snapshots_are_available_and_frozen(self):
+        import base64,hashlib
+        from supporting_documents import DocumentStore
+        store=DocumentStore(self.root/'uploads')
+        data=b'Item,Amount\nWidgets,42\n'
+        store.upload('a'*32,'budget.csv',len(data),hashlib.sha256(data).hexdigest(),0,base64.b64encode(data).decode())
+        self.service.document_store=store
+        original_launch=self.runner._launcher
+        observed=[]
+        def launch(job,prompt,run,stop):
+            self.assertTrue((Path(run)/'supporting'/'index.md').is_file())
+            self.assertIn('supporting',self.runner._worker_input(prompt,run))
+            observed.append(job['kind'])
+            return original_launch(job,prompt,run,stop)
+        self.runner._launcher=launch
+        first,status,view=self.run_match(['a'*32])
+        self.assertEqual(status['status'],'complete',status)
+        self.assertEqual(len(observed),6)
+        self.assertEqual(view['documents'][0]['name'],'budget.csv')
+        text=self.service.read_document(first['id'],'a'*32,'CSV!B2')['text']
+        self.assertIn('42',text)
+        (self.root/first['id']/'supporting'/('a'*32)/'source.csv').write_bytes(b'changed')
+        with self.assertRaises(ValueError):self.service.open_arena(first['id'])
 
     def test_sources_are_alongside_answers_without_rewriting_them(self):
         first, _, _ = self.run_match()

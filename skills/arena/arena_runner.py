@@ -196,6 +196,9 @@ class ArenaRunner:
             for item in [viewer] + viewer.get('assets', []):
                 if item.get('path'):
                     B.artifacts._contained(item['path'], run)
+            if arena.get('supporting_documents_sha256'):
+                from supporting_documents import verify_run_documents
+                verify_run_documents(run,arena['supporting_documents_sha256'])
             B.verify_frozen_rubric(arena)
             B.verify_frozen_solutions(arena)
             ledger = read_json('runner-attempts.json', optional=True)
@@ -242,7 +245,7 @@ class ArenaRunner:
                          logs=saved.get('logs', [])[-40:])
             return self.status()
 
-    def start(self, task, rubric='', agents=16, wave=3, run_id=None):
+    def start(self, task, rubric='', agents=16, wave=3, run_id=None, documents=None):
         if not isinstance(task, str) or not task.strip():
             raise ValueError('Enter a question or task before starting Arena.')
         if not isinstance(rubric, str):
@@ -260,6 +263,9 @@ class ArenaRunner:
             run_id = run_id or (time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:10])
             run = self.data_root / run_id
             run.mkdir()  # Never reuse or overwrite an existing run.
+            if documents:
+                from supporting_documents import snapshot_documents
+                snapshot_documents(run,documents)
             self._stop = threading.Event()
             self._ledger = {}
             self._input_hashes = {}
@@ -394,6 +400,9 @@ class ArenaRunner:
             self._input_hashes = {str(run / name): self._file_hash(run / name)
                                   for name in ('task.md', 'rubric.md', 'user-rubric.md')
                                   if (run / name).is_file()}
+            from supporting_documents import register_documents
+            self._input_hashes.update(register_documents(run,self._arena))
+            B.save_state(self._arena)
             self._refresh(tree=True)
             while True:
                 self._check_stop()
@@ -662,6 +671,11 @@ class ArenaRunner:
                                '--sandbox', 'workspace-write', '--cd', str(run),
                                '-c', 'agents.enabled=false', '-']
 
+    def _worker_input(self,prompt,run):
+        from supporting_documents import documents_brief
+        context=documents_brief(run) if self._arena and self._arena.get('supporting_documents_sha256') else ''
+        return context+'Read and follow exactly this generated Arena worker brief: '+str(Path(prompt).resolve())+'\nWrite only the outputs and scratch files permitted by the brief.\n'
+
     def _execute_job(self, job, prompt, run, stop):
         attempt = len(self._ledger[job['id']])
         log_path = Path(run) / 'worker-logs' / (job['id'] + '-%d.jsonl' % attempt)
@@ -681,9 +695,7 @@ class ArenaRunner:
                                               if os.name == 'nt' else {'start_new_session': True}))
                 self._processes.add(process)
             try:
-                process.stdin.write(('Read and follow exactly this generated Arena worker brief: ' +
-                                     str(Path(prompt).resolve()) +
-                                     '\nWrite only the outputs and scratch files permitted by the brief.\n').encode('utf-8'))
+                process.stdin.write(self._worker_input(prompt,run).encode('utf-8'))
                 process.stdin.close()
                 while True:
                     try:

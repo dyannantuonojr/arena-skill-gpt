@@ -24,6 +24,11 @@ class FormLayoutTests(unittest.TestCase):
         self.assertNotIn('hidden', indexed['form'][2])
         self.assertLess(indexed['task'][0], indexed['guidance'][0])
         self.assertLess(indexed['guidance'][0], indexed['tree'][0])
+        self.assertLess(indexed['task'][0], indexed['attach-files'][0])
+        self.assertLess(indexed['attach-files'][0], indexed['guidance'][0])
+        self.assertEqual(indexed['file-picker'][2]['type'],'file')
+        self.assertIn('multiple',indexed['file-picker'][2])
+        self.assertEqual(indexed['job-count'][1],'p')
         self.assertNotIn('required', indexed['guidance'][2])
         self.assertIn('required', indexed['task'][2])
 

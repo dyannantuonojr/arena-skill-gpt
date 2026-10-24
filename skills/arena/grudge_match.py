@@ -11,7 +11,7 @@ import bracket as B
 from arena_runner import ArenaRunner, Cancelled
 from arena_service import ArenaService
 from arena_view import render_markdown
-from grudge_evidence import CITATION_BRIEF, CHECKER_BRIEF, validate_report, report_markdown, report_html, judge_index
+from grudge_evidence import CITATION_BRIEF, CHECKER_BRIEF, validate_report, report_markdown, report_html, judge_index, validate_document_citations
 
 LABELS = {'a001': 'Original answer', 'review': 'Independent peer review',
           'a002': 'Synthesis', 'evidence': 'Evidence check', 'judgment': 'Independent judgment'}
@@ -39,8 +39,8 @@ class GrudgeRunner(ArenaRunner):
         # Native live search; keep the same workspace-write sandbox and owner account.
         return self._prefix + ['--search'] + base[len(self._prefix):]
 
-    def start(self, task, rubric='', agents=2, wave=1, run_id=None):
-        return super().start(task, rubric, agents=2, wave=1, run_id=run_id)
+    def start(self, task, rubric='', agents=2, wave=1, run_id=None, documents=None):
+        return super().start(task, rubric, agents=2, wave=1, run_id=run_id, documents=documents)
 
     def _refresh(self, tree=False, force=False):
         if not self._arena:
@@ -48,7 +48,7 @@ class GrudgeRunner(ArenaRunner):
         self._assert_integrity()
         completed = sum(bool(h and h[-1].get('accepted')) for h in self._ledger.values())
         self._update(completed=completed, total=6, viewer_ready=True)
-        self._arena['grudge_input_hashes'] = {Path(p).name: digest for p,digest in self._input_hashes.items()}
+        self._arena['grudge_input_hashes'] = {Path(p).relative_to(Path(self._arena['dir'])).as_posix(): digest for p,digest in self._input_hashes.items()}
         B.save_state(self._arena)
         run = Path(self._arena['dir'])
         temporary = run / 'runner-status.json.tmp'
@@ -119,6 +119,8 @@ class GrudgeRunner(ArenaRunner):
                          rubric_sha256=self._file_hash(run/'rubric.md'), user_rubric_sha256=self._file_hash(run/'user-rubric.md'))
             self._arena = state
             self._input_hashes = {str(run/name): self._file_hash(run/name) for name in ('task.md','user-rubric.md','rubric.md')}
+            from supporting_documents import register_documents
+            self._input_hashes.update(register_documents(run,state))
             self._refresh()
             original, synthesis = [state['agents'][key]['solution'] for key in ('a001','a002')]
             self._stage('a001.spawn', 'original', original, CITATION_BRIEF+'Give a normal, direct, well-supported answer to the question. Do not simulate review, synthesis, judging or other agents.')
@@ -128,7 +130,8 @@ class GrudgeRunner(ArenaRunner):
             def validate_evidence(path):
                 if path.stat().st_size > 2*1024*1024:
                     raise ValueError('Evidence report exceeds read limit')
-                validate_report(json.loads(path.read_text(encoding='utf-8-sig')))
+                value=validate_report(json.loads(path.read_text(encoding='utf-8-sig')))
+                validate_document_citations(value,run,state.get('supporting_documents_sha256'))
             self._stage('evidence.spawn', 'evidence', run/'evidence.json', CHECKER_BRIEF+
                         '\noriginal answer: '+original+'\npeer review: '+str(run/'review.md')+
                         '\nsynthesis: '+synthesis, validate_evidence)
@@ -150,7 +153,7 @@ class GrudgeRunner(ArenaRunner):
                     raise ValueError('A judge must provide an evidence-based reason')
                 B.decide(value, 'x', 'y')
             self._stage('judgment.spawn', 'judge', run/'judgment.json',
-                        CITATION_BRIEF+'Compare only the two anonymously labelled answers at '+str(run/'candidate-x.md')+' and '+str(run/'candidate-y.md')+'. Read the anonymized claim/source index at '+str(run/'evidence-for-judge.json')+'. Check source support for claims in BOTH candidates, including dates, scope, unsupported assertions and misleading citations. Treat checker assessments as provisional evidence; independently evaluate important or disputed claims. Do not reward citation count or assume a linked source proves a claim. Do not inspect other files except the question, rubric and anonymous index. Do not infer authorship or favor a newer, longer, or revised answer. Score both independently using the identical rubric. Return JSON with winner "x" or "y", scores for x and y containing numeric correctness, completeness, specificity, robustness and clarity (0-10) and boolean fatal; standing maps x and y to lists of evidence-supported unresolved issues; reason explains the comparison. Scores must support the winner. These are rubric scores, not measured accuracy percentages.', validate_judge)
+                        CITATION_BRIEF+'Compare only the two anonymously labelled answers at '+str(run/'candidate-x.md')+' and '+str(run/'candidate-y.md')+'. Read the anonymized claim/source index at '+str(run/'evidence-for-judge.json')+'. Check source support for claims in BOTH candidates, including dates, scope, unsupported assertions and misleading citations. Treat checker assessments as provisional evidence; independently evaluate important or disputed claims. Do not reward citation count or assume a linked source proves a claim. Do not inspect other files except the question, rubric, anonymous index and declared supporting-document snapshots. Do not infer authorship or favor a newer, longer, or revised answer. Score both independently using the identical rubric. Return JSON with winner "x" or "y", scores for x and y containing numeric correctness, completeness, specificity, robustness and clarity (0-10) and boolean fatal; standing maps x and y to lists of evidence-supported unresolved issues; reason explains the comparison. Scores must support the winner. These are rubric scores, not measured accuracy percentages.', validate_judge)
             verdict = json.loads((run/'judgment.json').read_text(encoding='utf-8-sig'))
             winner, totals, note = B.decide(verdict, 'x','y')
             mapping = {label: aid for aid, label in state['judge_labels'].items()}

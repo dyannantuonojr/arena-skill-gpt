@@ -10,6 +10,7 @@ import uuid
 
 import bracket as B
 from arena_view import render_markdown
+from supporting_documents import public_document
 
 TERMINAL = ('complete', 'failed', 'cancelled')
 MAX_TEXT = 60000
@@ -30,12 +31,13 @@ class ArenaService:
     run_prefix = 'arena-'
     total_jobs = 33
 
-    def __init__(self, data_root, runner, database=None):
+    def __init__(self, data_root, runner, database=None, document_store=None):
         raw = Path(data_root).absolute()
         B.artifacts._reject_redirects(raw)
         self.root = raw.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.runner = runner
+        self.document_store = document_store
         self.database = B.artifacts._contained(database or self.root / 'plugin-requests.sqlite3', self.root)
         for suffix in ('', '-wal', '-shm', '-journal'):
             B.artifacts._reject_redirects(Path(str(self.database) + suffix))
@@ -71,13 +73,22 @@ class ArenaService:
             runs = list(db.execute("SELECT run FROM requests WHERE state IN ('reserved','started')"))
         return any(self.get_run_status(run_id).get('status') not in TERMINAL for run_id, in runs)
 
-    def start_run(self, question, guidance='', request_id=None):
+    def start_run(self, question, guidance='', request_id=None, document_ids=None):
         identifier(request_id)
         if not isinstance(question, str) or not question.strip() or len(question) > MAX_TEXT:
             raise ValueError('Enter a question of at most 60000 characters')
         if not isinstance(guidance, str) or len(guidance) > MAX_TEXT:
             raise ValueError('Guidance must be text of at most 60000 characters')
-        digest = hashlib.sha256(json.dumps([question, guidance], ensure_ascii=True).encode()).hexdigest()
+        document_ids = [] if document_ids is None else document_ids
+        from supporting_documents import doc_id,MAX_FILES
+        if not isinstance(document_ids,list) or len(document_ids)>MAX_FILES:raise ValueError('Document IDs must be a list of up to eight files')
+        for key in document_ids:doc_id(key)
+        if len(set(document_ids))!=len(document_ids):raise ValueError('Duplicate supporting document')
+        identity = [question,guidance]
+        # Each immutable upload ID binds filename/size/SHA at upload. Retrying a
+        # reserved run must not depend on staging still being present or intact.
+        if document_ids:identity.append(document_ids)
+        digest = hashlib.sha256(json.dumps(identity, ensure_ascii=True).encode()).hexdigest()
         with self.lock:
             with self._db() as db:
                 db.execute('BEGIN IMMEDIATE')
@@ -86,6 +97,8 @@ class ArenaService:
                     if existing[0] != digest:
                         raise ValueError('Request ID already binds different inputs')
                     return self.get_run_status(existing[1])
+                if document_ids and self.document_store is None:raise ValueError('Document uploads are unavailable on this host')
+                documents=self.document_store.resolve(document_ids) if self.document_store else []
                 if self.runner.status().get('status') == 'running':
                     raise ValueError('An Arena run is already active')
                 for run_id, in db.execute("SELECT run FROM requests WHERE state IN ('reserved','started')"):
@@ -96,7 +109,7 @@ class ArenaService:
                 db.execute('INSERT INTO requests VALUES (?,?,?,?)', (request_id, digest, run_id, 'reserved'))
             # Commit the stable identity BEFORE workers can start. A failed launch
             # keeps its reservation; retrying never launches it again.
-            result = self.runner.start(question, rubric=guidance, agents=16, wave=3, run_id=run_id)
+            result = self.runner.start(question, rubric=guidance, agents=16, wave=3, run_id=run_id, **({'documents':documents} if documents else {}))
             with self._db() as db:
                 db.execute("UPDATE requests SET state='started' WHERE run=?", (run_id,))
             return public_status(result)
@@ -130,6 +143,9 @@ class ArenaService:
             B.artifacts._contained(agent['solution'], root)
         for name in ('rubric.md', 'user-rubric.md'):
             B.artifacts._contained(root / name, root)
+        from supporting_documents import verify_run_documents
+        manifest,_ = verify_run_documents(root,value.get('supporting_documents_sha256')) if value.get('supporting_documents_sha256') else (None,{})
+        value['_supporting_manifest'] = manifest
         B.verify_frozen_rubric(value)
         B.verify_frozen_solutions(value)
         try:
@@ -173,6 +189,16 @@ class ArenaService:
         return {'id': answer_id, 'text': text, 'html': render_markdown(text),
                 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
 
+    def read_document(self,run_id,document_id,locator=''):
+        from supporting_documents import doc_id,preview_document
+        doc_id(document_id)
+        state=self._arena(run_id)
+        manifest=state.get('_supporting_manifest') or {}
+        meta=next((m for m in manifest.get('documents',[]) if m['id']==document_id),None)
+        if meta is None:raise ValueError('Document is not attached to this run')
+        directory=self._path(run_id,'supporting/'+document_id)
+        return preview_document(directory,meta,locator)
+
     def get_finalist_package(self, run_id, answer_id):
         from arena_svg import diagram_svg
         identifier(answer_id)
@@ -192,14 +218,14 @@ class ArenaService:
                 latest = db.execute('SELECT run FROM requests ORDER BY rowid DESC LIMIT 1').fetchone()
             run_id = latest[0] if latest else None
         if not run_id:
-            return {'id': None, 'status': {'status': 'idle'}, 'answers': {}, 'rounds': [], 'task': '', 'guidance': '', 'tree_svg': ''}
+            return {'id': None, 'status': {'status': 'idle'}, 'answers': {}, 'rounds': [], 'task': '', 'guidance': '', 'tree_svg': '', 'documents': [], 'uploads_available': self.document_store is not None}
         from arena_svg import diagram_svg
         from arena_view import tree_document
         status = self.get_run_status(run_id)
         try:
             arena = self._arena(run_id)
         except FileNotFoundError:
-            return {'id': run_id, 'status': status, 'answers': {}, 'rounds': [], 'tree_svg': ''}
+            return {'id': run_id, 'status': status, 'answers': {}, 'rounds': [], 'tree_svg': '', 'documents': [], 'uploads_available': self.document_store is not None}
         answers = {}
         finalists = B.artifacts.finalists(arena)
         for aid, agent in arena['agents'].items():
@@ -215,7 +241,9 @@ class ArenaService:
                                for match in rd.get('matches', [])]} for rd in arena.get('rounds', [])]
         return {'id': run_id, 'status': status, 'answers': answers, 'rounds': rounds,
                 'champion': arena.get('champion'), 'task': input_text('task.md'), 'guidance': input_text('user-rubric.md'),
-                'tree_svg': diagram_svg(tree_document(arena))}
+                'tree_svg': diagram_svg(tree_document(arena)),
+                'uploads_available': self.document_store is not None,
+                'documents': [public_document(m) for m in (arena.get('_supporting_manifest') or {}).get('documents',[])]}
 
     def stop_run(self, run_id):
         identifier(run_id)

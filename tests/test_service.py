@@ -20,7 +20,8 @@ class FakeRunner:
     def status(self):
         return dict(self.current)
 
-    def start(self, task, rubric='', agents=16, wave=3, run_id=None):
+    def start(self, task, rubric='', agents=16, wave=3, run_id=None, documents=None):
+        self.documents = documents
         self.starts.append((task, rubric, run_id))
         self.current = {'status': 'running', 'id': run_id, 'completed': 0, 'total': 33}
         return self.status()
@@ -47,6 +48,22 @@ class ServiceTests(unittest.TestCase):
         reopened = ArenaService(self.root, self.runner)
         self.assertEqual(reopened.start_run('  Question?  ', '', 'request-1')['id'], one['id'])
         self.assertEqual(len(self.runner.starts), 1)
+
+    def test_document_identity_is_bound_to_request(self):
+        import base64
+        from supporting_documents import DocumentStore
+        store=DocumentStore(self.root/'uploads')
+        data=b'Source text';sha=hashlib.sha256(data).hexdigest()
+        for key in ('a'*32,'b'*32):store.upload(key,'source.txt',len(data),sha,0,base64.b64encode(data).decode())
+        service=ArenaService(self.root,self.runner,document_store=store)
+        one=service.start_run('question','','docs',document_ids=['a'*32])
+        again=service.start_run('question','','docs',document_ids=['a'*32])
+        self.assertEqual(one['id'],again['id'])
+        self.assertEqual(len(self.runner.documents),1)
+        with self.assertRaises(ValueError):service.start_run('question','','docs',document_ids=['b'*32])
+        (self.root/'uploads'/('a'*32)/'source.txt').write_bytes(b'changed staging')
+        self.assertEqual(service.start_run('question','','docs',document_ids=['a'*32])['id'],one['id'])
+        self.assertEqual(len(self.runner.starts),1)
 
     def test_changed_request_rejected(self):
         self.service.start_run('question', '', 'request-1')

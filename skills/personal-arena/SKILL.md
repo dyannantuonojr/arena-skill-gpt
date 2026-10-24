@@ -47,3 +47,8 @@ Only an explicit Grudge Match run request or its Start action authorizes
 Read with `get_grudge_status`, `get_grudge_answer`, and
 `get_grudge_winner_package`. Stop only the specified match using
 `stop_grudge_match`. Opening and setup do not authorize a real run.
+
+
+## Supporting documents
+
+The same interface has **Attach files** beneath the question. Users can attach context or ask about XLSX/CSV, PDF, DOCX, TXT or Markdown. Use the UI picker; ordinary chat attachments are not automatically imported. Upload/preview/remove actions do not authorize a run. Preserve `document_ids` along with exact question/guidance on start retries. All workers receive frozen snapshots; cite declared file names and exact locations, separating what supplied files say from independently verified facts. Never pass host paths or invent document IDs. See `docs/SUPPORTING_DOCUMENTS.md` for limits, citation format and retention.

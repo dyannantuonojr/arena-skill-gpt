@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "arena-skill-gpt",
   "version": "5.0.0",
-  "description": "Arena (33 jobs) and Grudge Match (6 jobs) in one UI, with source-linked evidence checks for original, review and synthesis, independent scoring, and Archify guides.",
+  "description": "Arena (33 jobs) and Grudge Match (6 jobs), with supporting-file uploads, source-linked evidence checks, answer citations, independent scoring and Archify guides.",
   "author": {
     "name": "dyannantuonojr"
   },

@@ -1,6 +1,6 @@
 {
   "name": "arena-skill-gpt",
-  "description": "Arena (33 jobs) and Grudge Match (6 jobs) in one UI, with source-linked evidence checks for original, review and synthesis, independent scoring, and Archify guides.",
+  "description": "Arena (33 jobs) and Grudge Match (6 jobs), with supporting-file uploads, source-linked evidence checks, answer citations, independent scoring and Archify guides.",
   "version": "5.0.0",
   "author": {
     "name": "dyannantuonojr"
