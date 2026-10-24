@@ -1071,8 +1071,9 @@ def cmd_init(args):
             task = fh.read()
     else:
         task = args.task or ""
-    task = task.strip()
-    if not task:
+    preserve_task = getattr(args, 'preserve_task', False)
+    task = task if preserve_task else task.strip()
+    if not task.strip():
         raise ArenaError("the task is empty. Pass --task-file or --task")
     user_rubric = None
     if getattr(args, "rubric_file", None):
@@ -1095,8 +1096,8 @@ def cmd_init(args):
     if os.path.exists(os.path.join(d, STATE_FILE)):
         raise ArenaError("%s already has an arena in it. Pick another --dir" % d)
     os.makedirs(d, exist_ok=True)
-    with open(os.path.join(d, "task.md"), "w", encoding="utf-8") as fh:
-        fh.write(task + "\n")
+    with open(os.path.join(d, "task.md"), "w", encoding="utf-8", newline="" if preserve_task else None) as fh:
+        fh.write(task if preserve_task else task + "\n")
     if baseline:
         with open(os.path.join(d, "baseline.md"), "w", encoding="utf-8") as fh:
             fh.write(baseline + "\n")

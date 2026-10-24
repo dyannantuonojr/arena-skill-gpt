@@ -18,6 +18,14 @@ import bracket as B
 
 
 class RunnerTests(unittest.TestCase):
+    def test_exact_question_bytes_preserved_by_embedded_init(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = lambda *args: (1, 'fixture stop')
+        question = '  Exact question\r\nwith spacing  '
+        initial = self.runner.start(question, agents=1)
+        self.finish()
+        self.assertEqual((Path(initial['run_dir']) / 'task.md').read_bytes(), question.encode('utf-8'))
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.runner = R.ArenaRunner(self.directory.name)

@@ -1,5 +1,6 @@
 """Control-plane tests use fake workers, never model jobs."""
 import json
+import hashlib
 from pathlib import Path
 import sys
 import tempfile
@@ -104,6 +105,42 @@ class ServiceTests(unittest.TestCase):
         result = self.service.open_arena()
         self.assertEqual(result['answers'], {})
         self.assertEqual(self.runner.starts, [])
+
+    def saved_answer(self, accepted=True):
+        run = self.root / 'saved'
+        run.mkdir()
+        path = run / 'answer.md'
+        path.write_text('Original accepted answer', encoding='utf-8')
+        state = {'dir': str(run), 'mode': 'select', 'agents': {'a001': {'solution': str(path)}}, 'rounds': []}
+        (run / 'arena.json').write_text(json.dumps(state))
+        (run / 'runner-status.json').write_text(json.dumps({'id': 'saved', 'status': 'failed'}))
+        ledger = {'a001.spawn': [{'accepted': accepted, 'output_sha256': {str(path): hashlib.sha256(path.read_bytes()).hexdigest()}}]}
+        (run / 'runner-attempts.json').write_text(json.dumps(ledger))
+        return path
+
+    def test_accepted_answer_tampering_before_freeze_is_rejected(self):
+        path = self.saved_answer()
+        path.write_text('Changed after acceptance')
+        with self.assertRaises(ValueError):
+            self.service.get_answer('saved', 'a001')
+
+    def test_unaccepted_answer_is_not_ready_or_readable(self):
+        self.saved_answer(accepted=False)
+        self.assertFalse(self.service.open_arena('saved')['answers']['a001']['ready'])
+        with self.assertRaises(ValueError):
+            self.service.get_answer('saved', 'a001')
+
+    def test_accepted_answer_is_readable_before_freeze(self):
+        self.saved_answer()
+        self.assertEqual(self.service.get_answer('saved', 'a001')['text'], 'Original accepted answer')
+
+    def test_tunnel_credentials_are_not_inherited_by_workers(self):
+        from unittest.mock import patch
+        from arena_runner import child_environment
+        with patch.dict('os.environ', {'CONTROL_PLANE_API_KEY': 'test-secret', 'ARENA_OWNER_SUBJECT': 'test-owner', 'OPENAI_API_KEY': 'test-api'}):
+            environment = child_environment()
+        for name in ('CONTROL_PLANE_API_KEY', 'ARENA_OWNER_SUBJECT', 'OPENAI_API_KEY'):
+            self.assertNotIn(name, environment)
 
     def test_redirected_database_rejected(self):
         link = self.root / 'linked.sqlite3'

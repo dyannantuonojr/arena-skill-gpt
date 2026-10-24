@@ -106,3 +106,29 @@ These checks did not rerun or revise any tournament answer or judgment.
 
 Final repair suite: 134 tests passed (four filesystem symlink privilege skips on
 this Windows account). Skill validation and git diff whitespace checks passed.
+
+
+Personal MCP plugin implementation (2026-10-24): 154 tests ran successfully in
+its locked Python 3.12 runtime; five filesystem privilege tests skipped. Actual
+MCP 2.3.0 client/server discovery, tool schemas, UI resource reads and duplicate
+starts passed. A separate real stdio process initialized and opened idle UI with
+zero run directories. Owner-only token and HTTP middleware tests cover missing,
+non-owner, expired, wrong-issuer, wrong-audience and wrong-scope credentials.
+
+Browser checks against an explicitly labeled software host read all 16 answers,
+both finalist guides/geometry views, direct question/blank guidance submission,
+Stop, and camera retention across polls. Final review's historical-run overwrite
+and selected-pending-answer issues were reproduced and corrected; historical
+reads stayed on the requested ID and the newly ready answer appeared with the
+125% camera transform unchanged. Service regressions reject modified accepted
+answers and unaccepted files before global freezing. A real embedded initializer
+regression preserves exact task bytes, including CRLF and outer spaces. No model
+jobs were launched. The original saved tournament and loopback app were retained.
+
+Portable plugin/MCP manifests passed their declared JSON schemas; the operating
+skill passed validation. Runtime setup installed only the optional dependencies,
+with no server, account connection, startup service, or remote access activated.
+Native Archify geometry is displayed without executing diagram scripts; full
+standalone Archify export/theme/motion controls remain in the original HTML.
+Actual ChatGPT embedding and owner-only private-tunnel access remain deployment
+checks. Local fixture results do not prove those remote checks.

@@ -1,6 +1,6 @@
 # Personal Arena Plugin Interface Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add an owner-only MCP plugin interface to the existing Arena runner and tree UI.
 
@@ -50,14 +50,14 @@ get_answer(run_id: str, answer_id: str) -> dict;
 get_finalist_package(run_id: str, answer_id: str) -> dict;
 stop_run(run_id: str) -> dict.
 
-- [ ] Add failing tests for duplicate and changed-content request IDs, crash
+- [x] Add failing tests for duplicate and changed-content request IDs, crash
   after reservation, stale stop, concurrent start, and historical reads during
   another active run. Assert worker launch count and unchanged active run ID.
-- [ ] Run `python -m unittest discover -s tests -p test_service.py -v`; confirm failures.
-- [ ] Implement SQLite reservation-before-launch, stable run IDs, strict run/path
+- [x] Run `python -m unittest discover -s tests -p test_service.py -v`; confirm failures.
+- [x] Implement SQLite reservation-before-launch, stable run IDs, strict run/path
   validation and artifact hash checks; minimally extend runner start to accept
   only service-reserved new run IDs. Interrupted reservations never auto-start.
-- [ ] Run service and runner suites; verify no core behavior regression; commit.
+- [x] Run service and runner suites; verify no core behavior regression; commit.
 
 ## Task 2: MCP tools and optional runtime
 
@@ -66,15 +66,15 @@ server object. Tools consume the Task 1 service and return typed structured data
 open_arena(run_id: str | None) returns the versioned UI resource reference and
 initial state, without starting workers.
 
-- [ ] In an isolated plugin environment, select a released official SDK compatible
+- [x] In an isolated plugin environment, select a released official SDK compatible
   with Python 3.11+, pin/lock it, and record its actual server/transport interfaces.
-- [ ] Add failing real-SDK client tests for initialize, tools/list, resources/read,
+- [x] Add failing real-SDK client tests for initialize, tools/list, resources/read,
   exact optional guidance, bounded result payloads, unknown IDs and tool schemas.
-- [ ] Run the protocol tests with the locked plugin runtime; confirm failures.
-- [ ] Register the six named tools, immediate run-ID return, correct read/write
+- [x] Run the protocol tests with the locked plugin runtime; confirm failures.
+- [x] Register the six named tools, immediate run-ID return, correct read/write
   annotations, versioned resource URI, and `text/html;profile=mcp-app` MIME type.
   Keep SDK imports outside the core Python 3.8 test path.
-- [ ] Run protocol tests with a fake runner; assert opening and reading start zero
+- [x] Run protocol tests with a fake runner; assert opening and reading start zero
   jobs. Verify stdout remains protocol-only for stdio; commit.
 
 ## Task 3: Embedded Arena interface
@@ -82,16 +82,16 @@ initial state, without starting workers.
 **Interfaces:** UI uses the standard MCP Apps bridge for open/start/status/answer/
 package/stop calls; it receives service DTOs rather than localhost paths.
 
-- [ ] Add labeled browser fixtures for initial state, running updates, completed
+- [x] Add labeled browser fixtures for initial state, running updates, completed
   finalists and errors. Test question submission and blank guidance preservation.
-- [ ] Port the tree-first layout, answer/match selection, finalist tabs and
+- [x] Port the tree-first layout, answer/match selection, finalist tabs and
   collapsed scope/assumptions. Retain camera/scroll/tab through live updates.
-- [ ] Probe nested native Archify iframe behavior under the documented CSP.
+- [x] Probe nested native Archify iframe behavior under the documented CSP.
   If blocked, implement a self-contained wrapper renderer adaptation without
   changing vendor; verify tree selection and all native finalist outputs.
-- [ ] Browser-test all 16 answer selections, both finalist tabs, exact camera
+- [x] Browser-test all 16 answer selections, both finalist tabs, exact camera
   preservation, duplicate Start prevention and visible reconnect errors.
-- [ ] Validate resource policy and bridge calls; commit. Do not claim ChatGPT
+- [x] Validate resource policy and bridge calls; commit. Do not claim ChatGPT
   compatibility until Task 6 verifies it in the real client.
 
 ## Task 4: Owner-only authentication
@@ -99,28 +99,28 @@ package/stop calls; it receives service DTOs rather than localhost paths.
 **Interfaces:** OwnerPolicy.authorize(verified_identity) -> owner_id or rejection.
 Identity comes from transport token verification, never tool arguments.
 
-- [ ] Add failing tests for missing, wrong-owner, expired, wrong-audience and
+- [x] Add failing tests for missing, wrong-owner, expired, wrong-audience and
   wrong-issuer identities; ensure denial occurs before run/filesystem access.
-- [ ] Implement the SDK-supported OAuth verification boundary with one configured
+- [x] Implement the SDK-supported OAuth verification boundary with one configured
   issuer/subject owner binding and bounded safe diagnostics. Tunnel-only identity
   is usable only if independently proven equivalent for this deployment.
-- [ ] Run `python -m unittest discover -s tests -p test_plugin_auth.py -v` in the
+- [x] Run `python -m unittest discover -s tests -p test_plugin_auth.py -v` in the
   plugin environment; require all denial tests pass. Confirm no secret in outputs.
-- [ ] Check local stdio is local-only and remote transport fails closed when
+- [x] Check local stdio is local-only and remote transport fails closed when
   owner configuration is missing; commit.
 
 ## Task 5: Package and regression verification
 
-- [ ] Add plugin SKILL.md with direct open/run/read/stop instructions and optional
+- [x] Add plugin SKILL.md with direct open/run/read/stop instructions and optional
   grading guidance. Include no prepare_plan or per-run planning requirement.
-- [ ] Add portable manifests/config templates, runtime setup/health diagnostics,
+- [x] Add portable manifests/config templates, runtime setup/health diagnostics,
   private host configuration instructions and a rollback procedure. Keep owner
   identity, credentials and tunnel IDs outside the repository.
-- [ ] Add separate plugin CI on Python 3.11/3.12 while retaining core 3.8/3.12 CI.
-- [ ] Run `python -m unittest discover -s tests` for the core, plugin SDK contract
+- [x] Add separate plugin CI on Python 3.11/3.12 while retaining core 3.8/3.12 CI.
+- [x] Run `python -m unittest discover -s tests` for the core, plugin SDK contract
   tests in the locked environment, skill validation, bundle integrity and real
   Archify checks against software fixtures. No model jobs.
-- [ ] Review changes against the spec, check license/credit preservation, commit.
+- [x] Review changes against the spec, check license/credit preservation, commit.
 
 ## Task 6: Connect and verify the personal deployment
 
@@ -140,3 +140,5 @@ Every review-focus case maps to Task 1 or Task 3. The optional SDK runtime canno
 raise the core minimum Python version. No plan-ID or pre-run Archify dependency
 remains. Remote activation and actual-client rendering remain completion gates,
 not claims inferred from local fixture success.
+
+Implementation status: Tasks 1–5 verified locally (154 tests, five Windows filesystem skips). Task 6 target is this Windows computer. Remote access is not enabled; actual ChatGPT client and owner-only tunnel validation remain pending.

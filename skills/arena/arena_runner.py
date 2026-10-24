@@ -31,7 +31,9 @@ class Cancelled(Exception):
 
 def child_environment():
     return {key: value for key, value in os.environ.items()
-            if key.upper() not in ('CODEX_API_KEY', 'OPENAI_API_KEY')}
+            if key.upper() not in ('CODEX_API_KEY', 'OPENAI_API_KEY', 'CONTROL_PLANE_API_KEY',
+                                   'ARENA_OWNER_SUBJECT', 'ARENA_OAUTH_ISSUER',
+                                   'ARENA_OAUTH_AUDIENCE', 'ARENA_OAUTH_JWKS_URL')}
 
 
 def discover_program(name, explicit=None):
@@ -384,6 +386,7 @@ class ArenaRunner:
                     source.write(rubric)
                 arguments += ['--rubric-file', str(rubric_file)]
             args = B.build_parser().parse_args(arguments)
+            args.preserve_task = True
             B.cmd_init(args)
             self._arena = B.load_state(args)
             self._input_hashes = {str(run / name): self._file_hash(run / name)

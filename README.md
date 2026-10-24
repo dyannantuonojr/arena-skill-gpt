@@ -10,6 +10,11 @@ The original critique-and-revision process remains available with explicit `--mo
 
 ## Run the Arena app
 
+For the optional personal MCP plugin interface, see
+[personal plugin setup](docs/PERSONAL_PLUGIN.md). It includes the tree, direct
+question entry, optional guidance, and finalist tabs. Local runtime tests do not
+establish a remote connection; private authentication and host setup are separate.
+
 Sign into Codex with your own ChatGPT account, then start the local app:
 
 ```bash

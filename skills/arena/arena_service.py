@@ -119,8 +119,32 @@ class ArenaService:
             raise ValueError('Saved directory identity mismatch')
         for agent in value.get('agents', {}).values():
             B.artifacts._contained(agent['solution'], root)
+        for name in ('rubric.md', 'user-rubric.md'):
+            B.artifacts._contained(root / name, root)
         B.verify_frozen_rubric(value)
         B.verify_frozen_solutions(value)
+        try:
+            ledger = self._json(run_id, 'runner-attempts.json')
+        except FileNotFoundError:
+            ledger = {}
+        accepted = set()
+        for key, history in ledger.items():
+            if not isinstance(history, list) or any(not isinstance(entry, dict) for entry in history):
+                raise ValueError('Invalid attempt ledger')
+            if not history or not history[-1].get('accepted'):
+                continue
+            outputs = history[-1].get('output_sha256', {})
+            if not isinstance(outputs, dict):
+                raise ValueError('Invalid accepted output ledger')
+            for name, digest in outputs.items():
+                path = B.artifacts._contained(name, root)
+                if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                    raise ValueError('Accepted output integrity failure')
+                if key.endswith('.spawn'):
+                    accepted.add(path.resolve())
+        value['_plugin_ready'] = {aid: Path(agent['solution']).is_file() and
+                                  (bool(value.get('frozen_solutions')) or Path(agent['solution']).resolve() in accepted)
+                                  for aid, agent in value.get('agents', {}).items()}
         return value
 
     def _text(self, path):
@@ -133,6 +157,8 @@ class ArenaService:
         arena = self._arena(run_id)
         if answer_id not in arena['agents']:
             raise ValueError('Unknown answer')
+        if not arena['_plugin_ready'][answer_id]:
+            raise ValueError('Answer has not been accepted yet')
         path = B.artifacts._contained(arena['agents'][answer_id]['solution'], self.root / run_id)
         text = self._text(path)
         return {'id': answer_id, 'text': text, 'html': render_markdown(text),
@@ -153,6 +179,10 @@ class ArenaService:
     def open_arena(self, run_id=None):
         run_id = run_id or self.runner.status().get('id')
         if not run_id:
+            with self._db() as db:
+                latest = db.execute('SELECT run FROM requests ORDER BY rowid DESC LIMIT 1').fetchone()
+            run_id = latest[0] if latest else None
+        if not run_id:
             return {'id': None, 'status': {'status': 'idle'}, 'answers': {}, 'rounds': [], 'task': '', 'guidance': '', 'tree_svg': ''}
         from arena_svg import diagram_svg
         from arena_view import tree_document
@@ -164,7 +194,7 @@ class ArenaService:
         answers = {}
         finalists = B.artifacts.finalists(arena)
         for aid, agent in arena['agents'].items():
-            answers[aid] = {'ready': Path(agent['solution']).is_file(),
+            answers[aid] = {'ready': arena['_plugin_ready'][aid],
                             'finalist': aid in finalists, 'champion': aid == arena.get('champion'),
                             'package_ready': B.artifacts.package_valid(arena, aid) if aid in finalists else False}
         def input_text(name):
@@ -172,7 +202,9 @@ class ArenaService:
                 return self._text(self._path(run_id, name))
             except FileNotFoundError:
                 return ''
-        return {'id': run_id, 'status': status, 'answers': answers, 'rounds': arena.get('rounds', []),
+        rounds = [{'matches': [{key: match[key] for key in ('id', 'a', 'b', 'winner', 'loser', 'reason', 'scores') if key in match}
+                               for match in rd.get('matches', [])]} for rd in arena.get('rounds', [])]
+        return {'id': run_id, 'status': status, 'answers': answers, 'rounds': rounds,
                 'champion': arena.get('champion'), 'task': input_text('task.md'), 'guidance': input_text('user-rubric.md'),
                 'tree_svg': diagram_svg(tree_document(arena))}
 
