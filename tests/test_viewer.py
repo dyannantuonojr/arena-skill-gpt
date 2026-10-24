@@ -69,15 +69,25 @@ class ViewerTests(unittest.TestCase):
         tree.write_text(original.replace('Original native', 'Updated native'), encoding='utf-8')
         self.assertNotEqual(fingerprint, self.view.state_fingerprint(self.state))
 
-    def test_rubric_editor_is_explicitly_for_next_run_and_current_rubric_is_readable(self):
+    def test_task_prompt_precedes_rubric_and_start_request_carries_both(self):
+        task = 'Original question: compare the implementations.\nRespect the supplied constraints.'
+        (self.root/'task.md').write_bytes(task.encode('utf-8'))
         (self.root/'rubric.md').write_text('# Actual grading rubric\nCheck reproducible evidence.', encoding='utf-8')
         _, page, data = self.export()
+        self.assertEqual(data['task_text'], task)
         self.assertIn('Check reproducible evidence.', data['rubric_html'])
-        self.assertIn('id="user-rubric"', page)
+        self.assertLess(page.index('id="arena-task"'), page.index('id="user-rubric"'))
+        self.assertIn('id="arena-task"', page)
         self.assertIn('Download rubric', page)
         self.assertIn('next run', page)
         self.assertIn('user-rubric.md', page)
         self.assertIn('--rubric-file', page)
+        self.assertIn('taskInput.value=arena.task_text', page)
+        self.assertIn('TASK\\n', page)
+        self.assertIn('Enter the question or task first.', page)
+        original = self.view.state_fingerprint(self.state)
+        (self.root/'task.md').write_text(task+' Changed', encoding='utf-8')
+        self.assertNotEqual(original, self.view.state_fingerprint(self.state))
 
     def test_renderer_escapes_active_markup_and_embedded_data_cannot_close_script(self):
         attack = '</script><script>alert(1)</script><img src=x onerror=alert(2)>\n[bad](javascript:alert(3))'

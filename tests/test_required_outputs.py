@@ -42,6 +42,16 @@ class RequiredOutputs(TempDir):
                    'artifact': {'path': str(p / 'diagram.html'), 'sha256': digest('diagram.html')}}
         (p / 'review' / 'diagram.finalize-summary.json').write_text(json.dumps(receipt), encoding='utf-8')
 
+    def test_fresh_artifact_workers_receive_bundled_authoring_and_cli_paths(self):
+        d = self.tournament()
+        self.ok('prompts', 'artifacts', '--dir', d)
+        for job in B.phase_jobs(load(d), 'artifacts'):
+            brief = Path(job['prompt']).read_text(encoding='utf-8')
+            for relative in ('SKILL.md', 'bin/archify.mjs'):
+                bundled = Path(B.HERE)/'vendor'/'archify'/relative
+                self.assertTrue(bundled.is_file())
+                self.assertIn(str(bundled), brief)
+
     def test_default_budget_includes_two_required_packages(self):
         plan = json.loads(self.ok('plan', '--json'))
         self.assertEqual((plan['core_calls'], plan['artifact_calls'], plan['calls']), (31, 2, 33))

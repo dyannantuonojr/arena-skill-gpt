@@ -774,7 +774,9 @@ def render_job(state, job, templates, task):
                  out=job["outputs"][0])
     elif kind == "artifact":
         aid = job["agent"]
-        v.update(agent=aid, solution=agents[aid]["solution"], artifact_dir=job["directory"])
+        v.update(agent=aid, solution=agents[aid]["solution"], artifact_dir=job["directory"],
+                 archify_skill=os.path.join(HERE, "vendor", "archify", "SKILL.md"),
+                 archify_cli=os.path.join(HERE, "vendor", "archify", "bin", "archify.mjs"))
     body = fill(templates[kind], v)
     if kind == "competitor" and state.get("has_user_rubric"):
         with open(os.path.join(d, "user-rubric.md"), encoding="utf-8", newline="") as fh:
