@@ -1,5 +1,14 @@
 # Arena + Grudge Match for ChatGPT and Codex
 
+**Special thanks to the original creators whose work made this project possible:**
+
+- **Jake Schincariol**, creator of [Arena](https://github.com/Jakeschincariol/arena-skill), for the original skill, tournament engine and answer-comparison workflow.
+- **tt-a1i and the Archify contributors**, creators of [Archify](https://github.com/tt-a1i/archify), for the architecture visualization tools behind our implementation diagrams.
+
+This project builds on both repositories. Their contributions are foundational;
+the original licenses and detailed attribution are preserved below and in the
+bundled sources.
+
 ![Arena and Grudge Match: one question, independent answers, stronger reasoning](docs/assets/arena-grudge-match.gif)
 
 **Ask a question. Compare answers. Explore the strongest result.** Arena and
