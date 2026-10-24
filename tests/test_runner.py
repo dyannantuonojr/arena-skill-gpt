@@ -24,6 +24,8 @@ class RunnerTests(unittest.TestCase):
         self.runner.capabilities = lambda: {'ready': True}
         self.runner._prefix = ['codex.exe']
         self.runner._node = shutil.which('node')
+        self.renderer_calls = []
+        self.runner._execute_renderer = self.fake_renderer
 
     def tearDown(self):
         self.runner.stop()
@@ -60,11 +62,32 @@ class RunnerTests(unittest.TestCase):
                      'scores': {job['a']: score, job['b']: lower},
                      'standing': {job['a']: [], job['b']: []}, 'reason': 'Test evidence'}
             Path(job['outputs'][0]).write_text(json.dumps(value), encoding='utf-8')
+        elif job['kind'] == 'artifact':
+            directory = Path(job['directory'])
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / 'implementation.md').write_text('# Implementation steps', encoding='utf-8')
+            (directory / 'candidate.json').write_text(json.dumps({'schema_version': 1, 'diagram_type': 'workflow'}), encoding='utf-8')
         else:
             Path(job['outputs'][0]).write_text('{}', encoding='utf-8')
         return 0, 'fake worker process completed'
 
+    def fake_renderer(self, command, directory, log_path):
+        self.renderer_calls.append(command)
+        candidate, diagram = Path(command[4]), Path(command[5])
+        diagram.write_text('<html>Native renderer fixture</html>', encoding='utf-8')
+        actual = log_path.parent / 'native-finalize-summary.json'
+        summary = {'ok': True, 'command': 'finalize', 'status': 'pass', 'type': command[3],
+                   'gates': dict.fromkeys(('validate', 'deliver', 'check', 'browser-check'), 'pass'),
+                   'specification': {'path': str(candidate), 'sha256': R.ArenaRunner._file_hash(candidate)},
+                   'artifact': {'path': str(diagram), 'sha256': R.ArenaRunner._file_hash(diagram)},
+                   'evidence': {'summaryReceipt': str(actual)}}
+        data = json.dumps(summary, indent=2) + '\n'
+        actual.write_text(data, encoding='utf-8')
+        return 0, json.dumps(summary)
+
     def accepted(self, state, aid):
+        directory = Path(B.artifacts.package_dir(state, aid))
+        (directory / 'manifest.json').write_text('{}', encoding='utf-8')
         return {'directory': str(Path(state['dir']) / 'artifacts' / aid)}
 
     def test_full_select_advances_and_requires_two_packages_with_bounded_waves(self):
@@ -93,6 +116,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(final['completed'], 33)
         self.assertEqual(final['total'], 33)
         self.assertEqual(len(jobs), 33)
+        self.assertEqual(len(self.renderer_calls), 2)
         self.assertLessEqual(active[1], 3)
         state = self.runner._arena
         self.assertEqual(len(state['rounds']), 4)
@@ -250,6 +274,310 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(final['status'], 'cancelled', final)
         self.assertFalse(alive(grandchild), 'Owned grandchild survived cancellation')
         self.assertEqual(self.runner._processes, set())
+
+    def test_app_artifact_prompt_assigns_rendering_to_runner_only(self):
+        run = Path(self.directory.name) / 'brief-fixture'
+        args = B.build_parser().parse_args(['init', '--dir', str(run), '--task', 'Task', '--agents', '1'])
+        B.cmd_init(args)
+        state = B.load_state(args)
+        state['champion'] = 'a001'
+        Path(state['agents']['a001']['solution']).parent.mkdir(parents=True, exist_ok=True)
+        Path(state['agents']['a001']['solution']).write_text('Answer', encoding='utf-8')
+        B.write_prompts(state, 'artifacts', artifact_renderer='runner')
+        job = B.phase_jobs(state, 'artifacts')[0]
+        body = Path(job['prompt']).read_text(encoding='utf-8')
+        self.assertIn('runner will generate diagram.html', body)
+        self.assertIn('Do not run finalize', body)
+        self.assertIn('Use node.sources only for real committed repository evidence', body)
+        self.assertIn('never put an unversioned frozen answer path there', body)
+        self.assertNotIn('Run real finalize validation', body)
+        B.write_prompts(state, 'artifacts')
+        self.assertIn('Run real finalize validation', Path(job['prompt']).read_text(encoding='utf-8'))
+
+    def test_runner_finalizes_candidate_and_accepts_actual_bound_receipt(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = self.fake_job
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'complete', final)
+        self.assertEqual(len(self.renderer_calls), 1)
+        state = self.runner._arena
+        package = Path(B.artifacts.package_dir(state, 'a001'))
+        record = self.runner._ledger['a001.artifact'][-1]['renderer']
+        self.assertEqual((package / 'review/diagram.finalize-summary.json').read_bytes(),
+                         Path(record['summary_receipt']).read_bytes())
+        self.assertTrue(B.artifacts.package_valid(state, 'a001'))
+        self.assertEqual(self.renderer_calls[0][2:4], ['finalize', 'workflow'])
+        self.assertIn('--out-dir', self.renderer_calls[0])
+
+    def test_renderer_missing_receipt_fails_without_another_model_attempt(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = self.fake_job
+        def missing(*args):
+            code, output = self.fake_renderer(*args)
+            Path(json.loads(output)['evidence']['summaryReceipt']).unlink()
+            return code, output
+        self.runner._execute_renderer = missing
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'failed', final)
+        self.assertIn('summary receipt is missing', final['error'])
+        self.assertEqual(len(self.runner._ledger['a001.artifact']), 1)
+        self.assertEqual(self.runner._arena.get('finalist_packages', {}), {})
+
+    def test_renderer_schema_failure_repairs_candidate_with_actual_diagnostics(self):
+        self.runner._refresh = self.fast_refresh
+        briefs = []
+        def launch(job, prompt, *args):
+            if job['kind'] == 'artifact':
+                briefs.append(Path(prompt).read_text(encoding='utf-8'))
+            return self.fake_job(job, prompt, *args)
+        self.runner._launcher = launch
+        attempts = []
+        def render(*args):
+            attempts.append(args[0])
+            if len(attempts) == 1:
+                return 1, json.dumps({'diagnostics': [{'code': 'workflow/invalid-node', 'message': 'node start requires label'},
+                                                       {'code': 'repository-evidence/repository-required', 'message': 'repository is required'}]})
+            return self.fake_renderer(*args)
+        self.runner._execute_renderer = render
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'complete', final)
+        self.assertEqual(len(briefs), 2)
+        self.assertIn('node start requires label', briefs[1])
+        self.assertIn('Keep real repository provenance when it is valid', briefs[1])
+        self.assertNotEqual(attempts[0][-2], attempts[1][-2])
+
+    def test_renderer_eperm_is_infrastructure_failure_without_model_retry(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = self.fake_job
+        self.runner._execute_renderer = lambda *args: (1, json.dumps({'diagnostics': [
+            {'code': 'output/path-identity-indeterminate', 'message': 'native realpath EPERM'}]}))
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'failed', final)
+        self.assertEqual(len(self.runner._ledger['a001.artifact']), 1)
+        self.assertIn('infrastructure failure', final['error'])
+
+    def test_worker_receipt_is_quarantined_before_trusted_finalize(self):
+        self.runner._refresh = self.fast_refresh
+        def launch(job, *args):
+            result = self.fake_job(job, *args)
+            if job['kind'] == 'artifact':
+                receipt = Path(job['directory']) / 'review/diagram.finalize-summary.json'
+                receipt.parent.mkdir()
+                receipt.write_text('forged receipt', encoding='utf-8')
+            return result
+        self.runner._launcher = launch
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'complete', final)
+        package = Path(B.artifacts.package_dir(self.runner._arena, 'a001'))
+        quarantine = list((package / 'review').glob('*.unowned-*'))
+        self.assertEqual(len(quarantine), 1)
+        self.assertEqual(quarantine[0].read_text(), 'forged receipt')
+
+    def test_unsupported_candidate_type_never_launches_trusted_renderer(self):
+        self.runner._refresh = self.fast_refresh
+        def launch(job, *args):
+            result = self.fake_job(job, *args)
+            if job['kind'] == 'artifact':
+                (Path(job['directory']) / 'candidate.json').write_text('{"diagram_type":"../../evil"}', encoding='utf-8')
+            return result
+        self.runner._launcher = launch
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'failed', final)
+        self.assertEqual(self.renderer_calls, [])
+        self.assertEqual(len(self.runner._ledger['a001.artifact']), 2)
+
+    def test_renderer_receipt_outside_owned_review_is_not_accepted(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = self.fake_job
+        def escape(*args):
+            code, output = self.fake_renderer(*args)
+            summary = json.loads(output)
+            summary['evidence']['summaryReceipt'] = str(Path(self.directory.name) / 'outside.json')
+            return code, json.dumps(summary)
+        self.runner._execute_renderer = escape
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'failed', final)
+        self.assertFalse(self.runner._arena.get('finalist_packages'))
+
+    def test_renderer_timeout_terminates_owned_process_and_clears_registration(self):
+        log_path = Path(self.directory.name) / 'timeout.log'
+        command = [sys.executable, '-c', 'import time; time.sleep(120)']
+        with mock.patch.object(R.subprocess, 'Popen', wraps=R.subprocess.Popen) as popen:
+            with self.assertRaisesRegex(R.RendererInfrastructureError, 'timed out'):
+                R.ArenaRunner._execute_renderer(self.runner, command, Path(self.directory.name), log_path, timeout=.05)
+        self.assertIs(popen.call_args.kwargs['shell'], False)
+        self.assertEqual(self.runner._processes, set())
+
+    def test_stop_cancels_owned_renderer_process(self):
+        failures = []
+        marker = Path(self.directory.name) / 'renderer.pid'
+        script = 'import os,time,pathlib; pathlib.Path(%r).write_text(str(os.getpid())); time.sleep(120)' % str(marker)
+        def render():
+            try:
+                R.ArenaRunner._execute_renderer(self.runner, [sys.executable, '-c', script],
+                                               Path(self.directory.name), Path(self.directory.name) / 'renderer.log')
+            except R.Cancelled:
+                failures.append('cancelled')
+        thread = threading.Thread(target=render)
+        thread.start()
+        deadline = time.monotonic() + 5
+        while not marker.exists() and time.monotonic() < deadline:
+            time.sleep(.02)
+        self.assertTrue(marker.exists())
+        self.runner._stop.set()
+        self.runner._reap_stopped()
+        thread.join(5)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(failures, ['cancelled'])
+        self.assertEqual(self.runner._processes, set())
+
+    def test_restore_completed_run_is_passive_read_only_and_selected(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = self.fake_job
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        run = Path(final['run_dir'])
+        before = {str(p.relative_to(run)): p.read_bytes() for p in run.rglob('*') if p.is_file()}
+        restored = R.ArenaRunner(self.directory.name)
+        restored._launcher = mock.Mock(side_effect=AssertionError('restore launched a worker'))
+        with mock.patch.object(B, 'next_action', return_value=('done', [], [])), \
+             mock.patch.object(B, 'view_ready', return_value=True):
+            status = restored.restore(final['id'])
+        self.assertEqual(status['status'], 'complete')
+        self.assertEqual(status['id'], final['id'])
+        self.assertEqual(status['completed'], status['total'])
+        self.assertEqual(status['viewer_url'], '/runs/' + final['id'] + '/viewer/index.html')
+        self.assertTrue(status['viewer_ready'])
+        self.assertIsNone(restored._thread)
+        restored._launcher.assert_not_called()
+        self.assertEqual(before, {str(p.relative_to(run)): p.read_bytes() for p in run.rglob('*') if p.is_file()})
+
+    def test_restore_failed_run_keeps_failure_without_retrying(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = lambda *args: (1, 'no output')
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        restored = R.ArenaRunner(self.directory.name)
+        restored._launcher = mock.Mock()
+        status = restored.restore(final['id'])
+        self.assertEqual(status['status'], 'failed')
+        self.assertEqual(status['error'], final['error'])
+        self.assertEqual(status['completed'], 0)
+        self.assertFalse(status['viewer_ready'])
+        self.assertIsNone(restored._thread)
+        restored._launcher.assert_not_called()
+        for run_id in ('..', '../escape', 'a/b', 'a\\b', '.', 'C:escape', ''):
+            with self.assertRaises(ValueError):
+                restored.restore(run_id)
+
+    def test_restore_rejects_stored_run_directory_redirect(self):
+        run = Path(self.directory.name) / 'fixture'
+        args = B.build_parser().parse_args(['init', '--dir', str(run), '--task', 'Task', '--agents', '1'])
+        B.cmd_init(args)
+        state = B.load_state(args)
+        state['dir'] = self.directory.name
+        (run / 'arena.json').write_text(json.dumps(state), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'directory'):
+            self.runner.restore('fixture')
+
+    def test_restore_refuses_active_run(self):
+        entered = threading.Event()
+        self.runner._refresh = self.fast_refresh
+        def launch(job, prompt, run, stop):
+            entered.set()
+            stop.wait(5)
+            return 1, 'cancelled'
+        self.runner._launcher = launch
+        initial = self.runner.start('Task', agents=1)
+        self.assertTrue(entered.wait(3))
+        with self.assertRaisesRegex(ValueError, 'already active'):
+            self.runner.restore(initial['id'])
+        self.runner.stop()
+        self.assertEqual(self.finish()['status'], 'cancelled')
+
+    def test_restore_rejects_redirected_run(self):
+        outside = Path(self.directory.name) / 'outside'
+        outside.mkdir()
+        link = Path(self.directory.name) / 'redirect'
+        try:
+            link.symlink_to(outside, target_is_directory=True)
+        except OSError:
+            self.skipTest('Directory symlinks unavailable for this account')
+        with self.assertRaisesRegex(ValueError, 'redirected'):
+            self.runner.restore('redirect')
+
+    def test_restore_verifies_frozen_inputs(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = lambda *args: (1, 'no output')
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        (Path(final['run_dir']) / 'rubric.md').write_text('tampered rubric', encoding='utf-8')
+        restored = R.ArenaRunner(self.directory.name)
+        with self.assertRaises(B.ArenaError):
+            restored.restore(final['id'])
+        self.assertIsNone(restored.status()['id'])
+
+    def test_native_browser_runtime_failure_does_not_retry_model(self):
+        self.runner._refresh = self.fast_refresh
+        self.runner._launcher = self.fake_job
+        self.runner._execute_renderer = lambda *args: (1, json.dumps({'diagnostics': [
+            {'code': 'viewer/browser-check-runtime', 'message': 'browser launch failed'}]}))
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'failed', final)
+        self.assertEqual(len(self.runner._ledger['a001.artifact']), 1)
+        self.assertIn('infrastructure failure', final['error'])
+
+    def test_repository_candidate_without_operator_root_stops_before_render(self):
+        self.runner._refresh = self.fast_refresh
+        def launch(job, *args):
+            result = self.fake_job(job, *args)
+            if job['kind'] == 'artifact':
+                candidate = Path(job['directory']) / 'candidate.json'
+                value = json.loads(candidate.read_text())
+                value['meta'] = {'repository': {'url': 'https://example.test/repo', 'revision': 'a' * 40}}
+                value['nodes'] = [{'id': 'source', 'sources': [{'path': 'answer.md', 'line': 1}]}]
+                candidate.write_text(json.dumps(value), encoding='utf-8')
+            return result
+        self.runner._launcher = launch
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'failed', final)
+        self.assertIn('--repo-root', final['error'])
+        self.assertEqual(len(self.runner._ledger['a001.artifact']), 1)
+        self.assertEqual(self.renderer_calls, [])
+
+    @unittest.skipUnless(shutil.which('git'), 'Git required for evidence root configuration')
+    def test_operator_repository_root_is_validated_in_brief_and_finalize(self):
+        repository = Path(self.directory.name) / 'source repo'
+        repository.mkdir()
+        R.subprocess.run(['git', 'init', str(repository)], check=True, capture_output=True, shell=False)
+        configured = R.ArenaRunner(Path(self.directory.name) / 'configured', repo_root=repository)
+        self.assertEqual(configured.repo_root, str(repository.resolve()))
+        self.runner.repo_root = configured.repo_root
+        self.runner._refresh = self.fast_refresh
+        briefs = []
+        def launch(job, prompt, *args):
+            if job['kind'] == 'artifact':
+                briefs.append(Path(prompt).read_text(encoding='utf-8'))
+            return self.fake_job(job, prompt, *args)
+        self.runner._launcher = launch
+        self.runner.start('Task', agents=1)
+        final = self.finish()
+        self.assertEqual(final['status'], 'complete', final)
+        self.assertIn(str(repository.resolve()), briefs[0])
+        self.assertIn('read-only', briefs[0])
+        command = self.renderer_calls[0]
+        self.assertEqual(command[command.index('--repo-root') + 1], str(repository.resolve()))
+        with self.assertRaisesRegex(ValueError, 'Git'):
+            R.ArenaRunner(Path(self.directory.name) / 'invalid-configured', repo_root=self.directory.name)
 
     def test_command_uses_stdin_safe_args_account_auth_and_no_shell(self):
         command = self.runner._worker_command('C:/run with spaces')

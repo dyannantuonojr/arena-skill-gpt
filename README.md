@@ -40,6 +40,19 @@ weights. The default rubric is always used, even when you supply no guidance.
 The app runs up to three independent Codex workers at once. **Stop run** cancels
 its worker processes.
 
+Live updates preserve the tree's zoom and position, the selected answer, and the
+reading panel's scroll position. Finalist workers author the implementation guide
+and diagram candidate; the app then runs the bundled Archify renderer and all four
+validation gates outside the worker sandbox. Renderer infrastructure failures stop
+with diagnostics instead of consuming another model authoring attempt.
+
+For diagrams citing committed source files, start the app with
+`--repo-root /path/to/local/git-checkout`. The app validates that working tree and
+passes it to Archify for pinned repository evidence checks. Answer citations use
+plain provenance cards or the implementation guide instead of Git source fields.
+To reopen a saved run without starting workers, use `--open-run RUN_ID` with the
+same `--data-dir` that contains it.
+
 The app needs Python 3.8+, Node 18+, Codex CLI signed in with ChatGPT, and an
 installed Chrome/Chromium/Edge browser. On Windows it also discovers the desktop
 app's bundled native Codex executable. If Codex is not installed, use the

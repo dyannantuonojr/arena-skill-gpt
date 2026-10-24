@@ -21,6 +21,10 @@ import arena_setup
 from arena_view import export_view, state_fingerprint
 
 
+class RendererInfrastructureError(RuntimeError):
+    """Retrying model authoring cannot repair the renderer environment."""
+
+
 class Cancelled(Exception):
     pass
 
@@ -63,11 +67,26 @@ def codex_prefix(executable, node=None):
 
 
 class ArenaRunner:
-    def __init__(self, data_root, codex=None, node=None):
+    def __init__(self, data_root, codex=None, node=None, repo_root=None):
         self.data_root = Path(data_root).resolve()
         self.data_root.mkdir(parents=True, exist_ok=True)
         self.codex = codex
         self.node = node
+        self.repo_root = None
+        if repo_root is not None:
+            repository = Path(repo_root).expanduser().resolve()
+            if not repository.is_dir():
+                raise ValueError('Configured --repo-root must be an existing local Git working-tree root')
+            try:
+                result = subprocess.run(['git', '-C', str(repository), 'rev-parse', '--show-toplevel'],
+                                        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                        env=child_environment(), shell=False, timeout=10,
+                                        encoding='utf-8', errors='replace')
+                if result.returncode or Path(result.stdout.strip()).resolve() != repository:
+                    raise ValueError('Configured --repo-root must be the local Git working-tree root')
+            except (OSError, subprocess.SubprocessError) as error:
+                raise ValueError('Cannot validate configured Git --repo-root: ' + str(error)) from error
+            self.repo_root = str(repository)
         self._lock = threading.RLock()
         self._stop = threading.Event()
         self._processes = set()
@@ -139,6 +158,85 @@ class ArenaRunner:
             return copy.deepcopy(self._state)
 
     snapshot = status
+
+    def restore(self, run_id):
+        """Select a saved run for inspection without starting workers or writing files."""
+        with self._lock:
+            if self._thread is not None and self._thread.is_alive():
+                raise ValueError('An Arena run is already active. Stop it before selecting another.')
+            if (not isinstance(run_id, str) or not run_id or run_id in ('.', '..')
+                    or any(char not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' for char in run_id)):
+                raise ValueError('Invalid saved Arena run ID')
+            run = B.artifacts._contained(self.data_root / run_id, self.data_root)
+            if not run.is_dir():
+                raise ValueError('Saved Arena run directory does not exist: ' + run_id)
+            def read_json(name, optional=False):
+                path = B.artifacts._contained(run / name, run)
+                if optional and not path.exists():
+                    return {}
+                value = json.loads(path.read_text(encoding='utf-8-sig'))
+                if not isinstance(value, dict):
+                    raise ValueError('Saved ' + name + ' must contain a JSON object')
+                return value
+            arena = read_json('arena.json')
+            if Path(arena.get('dir', '')).resolve() != run.resolve():
+                raise ValueError('Saved Arena directory does not match selected run directory')
+            B.artifacts._contained(arena['dir'], run)
+            for name in ('task.md', 'rubric.md', 'user-rubric.md'):
+                path = B.artifacts._contained(run / name, run)
+                if name == 'task.md' and not B._has_output(path):
+                    raise ValueError('Saved Arena task input is missing or empty')
+            for agent in arena['agents'].values():
+                B.artifacts._contained(agent['solution'], run)
+            viewer = arena.get('viewer') or {}
+            for item in [viewer] + viewer.get('assets', []):
+                if item.get('path'):
+                    B.artifacts._contained(item['path'], run)
+            B.verify_frozen_rubric(arena)
+            B.verify_frozen_solutions(arena)
+            ledger = read_json('runner-attempts.json', optional=True)
+            for history in ledger.values():
+                if not isinstance(history, list) or any(not isinstance(entry, dict) for entry in history):
+                    raise ValueError('Saved runner attempts are invalid')
+                if history and history[-1].get('accepted'):
+                    for name, digest in history[-1].get('output_sha256', {}).items():
+                        path = B.artifacts._contained(name, run)
+                        if not path.is_file() or self._file_hash(path) != digest:
+                            raise ValueError('Saved owned output integrity failure: ' + str(path))
+            saved = read_json('runner-status.json', optional=True)
+            phase, unused_left, unused_jobs = B.next_action(arena)
+            complete = phase == 'done'
+            if complete:
+                B.verify_frozen_solutions(arena, required=True)
+            status = 'complete' if complete else saved.get('status')
+            if status not in ('complete', 'failed', 'cancelled') or (not complete and status == 'complete'):
+                status = 'failed'
+            error = None if complete else saved.get('error')
+            if status == 'failed' and not error:
+                error = 'Saved run is incomplete; passive restore does not resume workers.'
+            total = B.plan_totals(arena['agents_n'], arena.get('wave', 1), arena.get('mode', 'select'),
+                                  arena.get('require_finalist_artifacts', True))['calls']
+            if arena.get('has_baseline'):
+                total += 1
+            completed = sum(B._has_output(agent['solution']) and bool(ledger.get(aid + '.spawn'))
+                            and ledger[aid + '.spawn'][-1].get('accepted', False)
+                            for aid, agent in arena['agents'].items())
+            completed += sum(bool(match.get('winner')) for rd in arena['rounds'] for match in rd['matches'])
+            completed += sum(B.artifacts.package_valid(arena, aid) for aid in B.artifacts.finalists(arena))
+            if (arena.get('final') or {}).get('result'):
+                completed += 1
+            self._arena = arena
+            self._ledger = ledger
+            self._input_hashes = {}
+            self._tree_source = None
+            self._export_fingerprint = None
+            self._stop = threading.Event()
+            self._update(status=status, id=run_id, run_dir=str(run), phase='done' if complete else saved.get('phase', phase),
+                         completed=total if complete else completed, total=total, active=[], error=error,
+                         agents=arena['agents_n'], wave=arena.get('wave', 1),
+                         viewer_ready=B.view_ready(arena), viewer_url='/runs/' + run_id + '/viewer/index.html',
+                         logs=saved.get('logs', [])[-40:])
+            return self.status()
 
     def start(self, task, rubric='', agents=16, wave=3):
         if not isinstance(task, str) or not task.strip():
@@ -298,7 +396,7 @@ class ArenaRunner:
                     self._update(status='complete', active=[])
                     return
                 if phase in B.PHASES:
-                    B.write_prompts(self._arena, phase)
+                    B.write_prompts(self._arena, phase, artifact_renderer="runner", evidence_root=self.repo_root)
                     self._run_phase(phase, wave)
                 elif phase == 'collect':
                     for mid, outcome, note in B.collect(self._arena):
@@ -373,6 +471,7 @@ class ArenaRunner:
                             if code:
                                 raise RuntimeError('Codex exited %s: %s' % (code, detail[-1800:]))
                             if phase == 'artifacts':
+                                self._render_artifact(job)
                                 metadata = B.artifacts.accept_package(self._arena, job['agent'])
                                 self._arena.setdefault('finalist_packages', {})[job['agent']] = metadata
                                 B.save_state(self._arena)
@@ -383,9 +482,27 @@ class ArenaRunner:
                                          detail=detail[-2000:])
                         except Cancelled:
                             entry.update(status='cancelled', finished_at=time.time())
+                        except RendererInfrastructureError as error:
+                            entry.update(status='failed', finished_at=time.time(), error=str(error),
+                                         infrastructure_failure=True)
+                            self._persist_ledger()
+                            self._stop.set()
+                            self._reap_stopped()
+                            raise
                         except Exception as error:
                             entry.update(status='failed', finished_at=time.time(), error=str(error)[-2000:])
                             self._log(job['id'] + ': ' + str(error))
+                            if phase == 'artifacts':
+                                with Path(job['prompt']).open('a', encoding='utf-8') as brief:
+                                    brief.write('\n\nFOCUSED CANDIDATE REPAIR: The runner rejected the previous attempt. '
+                                                'Repair the candidate/guide using these actual diagnostics; '
+                                                'do not generate HTML or receipts.\n' + str(error)[-12000:] + '\n')
+                                    if 'repository-evidence/repository-required' in str(error):
+                                        brief.write('node.sources is reserved for real committed repository evidence with '
+                                                    'truthful pinned meta.repository. For nonrepository recommendations, '
+                                                    'cite frozen answer sections in plain diagram cards and implementation.md; '
+                                                    'do not represent the unversioned answer file as Git evidence. '
+                                                    'Keep real repository provenance when it is valid.\n')
                             # A nonzero exit cannot become success merely because
                             # the process left a partial output on disk.
                             if phase != 'artifacts':
@@ -400,6 +517,137 @@ class ArenaRunner:
                         self._reap_stopped()
                     self._refresh(tree=bool(done))
             self._check_stop()
+
+    def _render_artifact(self, job):
+        """Finalize model-authored data in an owned trusted process, never in its sandbox."""
+        try:
+            self._finalize_artifact(job)
+        except PermissionError as error:
+            raise RendererInfrastructureError('Archify filesystem access failed: ' + str(error)) from error
+        except B.artifacts.ArtifactError as error:
+            if isinstance(error.__cause__, PermissionError):
+                raise RendererInfrastructureError('Archify filesystem access failed: ' + str(error)) from error
+            raise
+
+    def _finalize_artifact(self, job):
+        self._check_stop()
+        artifacts = B.artifacts
+        directory = Path(artifacts.package_dir(self._arena, job['agent']))
+        candidate = artifacts._contained(directory / 'candidate.json', directory)
+        guide = artifacts._contained(directory / 'implementation.md', directory)
+        diagram = artifacts._contained(directory / 'diagram.html', directory)
+        receipt = artifacts._contained(directory / 'review' / 'diagram.finalize-summary.json', directory)
+        value = artifacts._object(artifacts._read(candidate), 'candidate specification')
+        diagram_type = value.get('diagram_type')
+        if diagram_type not in artifacts.NATIVE_TYPES:
+            raise ValueError('candidate.diagram_type must be a supported native Archify type: ' +
+                             ', '.join(sorted(artifacts.NATIVE_TYPES)))
+        def has_repository_evidence(item):
+            if isinstance(item, dict):
+                if item.get('repository') or item.get('sources'):
+                    return True
+                return any(has_repository_evidence(child) for child in item.values())
+            if isinstance(item, list):
+                return any(has_repository_evidence(child) for child in item)
+            return False
+        if has_repository_evidence(value) and not self.repo_root:
+            raise RendererInfrastructureError('Candidate contains repository evidence but no trusted repository root is configured. '
+                                              'Restart the Arena server with operator --repo-root PATH pointing to the real local Git root; '
+                                              'preserve valid pinned repository provenance. For a nonrepository task, repair the candidate '
+                                              'to cite answer sections in plain cards/guide instead of node.sources.')
+        if not artifacts._read(guide).decode('utf-8-sig').strip():
+            raise ValueError('implementation.md must be nonempty UTF-8')
+        # The CLI validates the schema. Containment and redirects are checked before
+        # invoking trusted code; worker-produced receipts never establish acceptance.
+        receipt.parent.mkdir(parents=True, exist_ok=True)
+        if receipt.exists():
+            os.replace(receipt, receipt.with_name(receipt.name + '.unowned-' + uuid.uuid4().hex[:10]))
+        review = artifacts._contained(receipt.parent / ('attempt-' + uuid.uuid4().hex), directory)
+        review.mkdir()
+        source_hash = self._file_hash(candidate)
+        cli = Path(__file__).resolve().parent / 'vendor' / 'archify' / 'bin' / 'archify.mjs'
+        command = [self._node, str(cli), 'finalize', diagram_type, str(candidate), str(diagram),
+                   '--quality', 'showcase', '--out-dir', str(review), '--json']
+        if self.repo_root:
+            command += ['--repo-root', self.repo_root]
+        entry = self._ledger[job['id']][-1]
+        record = {'command': command, 'review_dir': str(review), 'started_at': time.time()}
+        entry['renderer'] = record
+        log_path = review / 'runner-finalize.log'
+        try:
+            code, output = self._execute_renderer(command, directory, log_path)
+            record.update(exit_code=code, finished_at=time.time(), log=str(log_path))
+            try:
+                summary = json.loads(output)
+                if not isinstance(summary, dict):
+                    raise ValueError('expected an object')
+            except (ValueError, TypeError) as error:
+                raise RendererInfrastructureError('Archify returned no valid JSON summary: ' + output[-3000:]) from error
+            if code != 0:
+                diagnostics = json.dumps(summary.get('diagnostics', summary), ensure_ascii=False)
+                codes = [str(row.get('code', '')) for row in summary.get('diagnostics', []) if isinstance(row, dict)]
+                if (any('path-identity' in item or item in ('finalize/runtime', 'browser-check/runtime', 'viewer/browser-check-runtime') for item in codes)
+                        or any(token in diagnostics for token in ('EPERM', 'EACCES', 'ENOENT', 'browser-not-found'))):
+                    raise RendererInfrastructureError('Archify infrastructure failure: ' + diagnostics)
+                raise ValueError('Archify finalize rejected candidate: ' + diagnostics)
+            if (summary.get('ok') is not True or summary.get('status') != 'pass'
+                    or summary.get('command') != 'finalize' or summary.get('type') != diagram_type
+                    or any(summary.get('gates', {}).get(gate) != 'pass'
+                           for gate in ('validate', 'deliver', 'check', 'browser-check'))):
+                raise RendererInfrastructureError('Archify exited without all passing native/browser gates: ' + output[-4000:])
+            actual = summary.get('evidence', {}).get('summaryReceipt')
+            if not isinstance(actual, str) or not Path(actual).is_absolute():
+                raise RendererInfrastructureError('Archify did not identify its actual summary receipt')
+            try:
+                actual = artifacts._contained(actual, review)
+            except artifacts.ArtifactError as error:
+                raise RendererInfrastructureError('Archify summary receipt escaped owned review directory: ' + str(error)) from error
+            if not actual.is_file():
+                raise RendererInfrastructureError('Archify passing summary receipt is missing: ' + str(actual))
+            data = actual.read_bytes()
+            if artifacts._object(data, 'renderer summary receipt') != summary:
+                raise RendererInfrastructureError('Archify output and saved summary receipt disagree')
+            if self._file_hash(candidate) != source_hash:
+                raise RendererInfrastructureError('Candidate changed during trusted finalization')
+            # Preserve actual upstream receipt bytes; accept_package binds all hashes.
+            receipt.write_bytes(data)
+            record['summary_receipt'] = str(actual)
+            self._check_stop()
+        except (OSError, subprocess.SubprocessError) as error:
+            raise RendererInfrastructureError('Archify infrastructure failure: ' + str(error)) from error
+        finally:
+            record['finished_at'] = time.time()
+
+    def _execute_renderer(self, command, directory, log_path, timeout=180):
+        # Register Node before Stop can inspect ownership. Its browser and renderer
+        # subprocesses inherit the owned process tree/session, just like workers.
+        with log_path.open('w+b') as log:
+            with self._lock:
+                self._check_stop()
+                process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log,
+                                           stderr=subprocess.STDOUT, cwd=str(directory),
+                                           env=child_environment(), shell=False,
+                                           **({'creationflags': subprocess.CREATE_NO_WINDOW}
+                                              if os.name == 'nt' else {'start_new_session': True}))
+                self._processes.add(process)
+            started = time.monotonic()
+            try:
+                while True:
+                    self._check_stop()
+                    if time.monotonic() - started > timeout:
+                        raise RendererInfrastructureError('Archify finalize timed out after %s seconds' % timeout)
+                    try:
+                        code = process.wait(timeout=.25)
+                        break
+                    except subprocess.TimeoutExpired:
+                        pass
+                self._check_stop()
+                log.seek(0)
+                return code, log.read().decode('utf-8', errors='replace').strip()
+            finally:
+                self._terminate_owned(process)
+                with self._lock:
+                    self._processes.discard(process)
 
     def _worker_command(self, run):
         return self._prefix + ['exec', '--json', '--ephemeral', '--skip-git-repo-check',

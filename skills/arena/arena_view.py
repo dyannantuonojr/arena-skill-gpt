@@ -315,15 +315,53 @@ def export_view(state, output_path):
 
 
 
-_TREE_BRIDGE = '''<style>#focus-chip{display:none!important}[data-arena-selected] rect{stroke:#65dfc2!important;stroke-width:3px!important}</style><script>
+_TREE_BRIDGE = r'''<style>#focus-chip{display:none!important}[data-arena-selected] rect{stroke:#65dfc2!important;stroke-width:3px!important}</style><script>
 (function(){
+ function viewState(){
+  const scroll={x:window.scrollX,y:window.scrollY};
+  if(window.arenaFallbackView)return {kind:'fallback',box:window.arenaFallbackView.capture(),scroll};
+  if(typeof Archify==='undefined'||!Archify.view)return null;
+  const container=document.querySelector('.diagram-container'),svg=container&&container.querySelector('svg');
+  if(!svg||!svg.viewBox)return null;
+  const camera=Archify.view.state(),box=svg.viewBox.baseVal,w=svg.clientWidth,h=svg.clientHeight;
+  if(!w||!h||!box.width||!box.height)return null;
+  const unit=Math.min(w/box.width,h/box.height),ox=(w-box.width*unit)/2,oy=(h-box.height*unit)/2;
+  return {kind:'archify',scale:camera.scale,camera,center:{x:box.x+((w/2-camera.x)/camera.scale-ox)/unit,y:box.y+((h/2-camera.y)/camera.scale-oy)/unit},left:container.scrollLeft,top:container.scrollTop,scroll};
+ }
+ function report(request){parent.postMessage({type:'arena-view-state',state:viewState(),request},'*');}
+ function restore(state){
+  if(!state||typeof state!=='object')return;
+  if(state.kind==='fallback'&&window.arenaFallbackView)window.arenaFallbackView.restore(state.box);
+  else if(state.kind==='archify'&&typeof Archify!=='undefined'&&Archify.view&&state.center&&Number.isFinite(state.center.x)&&Number.isFinite(state.center.y)&&Number.isFinite(state.scale)&&state.scale>=.25&&state.scale<=3){
+   const container=document.querySelector('.diagram-container');
+   if(!container)return;const wide=container.getAttribute('data-wide-diagram');
+   // The native mobile centering action deliberately resets zoom. Use its normal
+   // camera action during restoration, then retain the authored responsive flag.
+   if(wide!==null)container.removeAttribute('data-wide-diagram');
+   try{Archify.view.centerAt(state.center.x,state.center.y,{scale:Math.max(1,state.scale),instant:true});
+    for(let n=0;n<3&&Archify.view.state().scale>state.scale+.01;n++)Archify.view.zoomOut();
+   }finally{if(wide!==null)container.setAttribute('data-wide-diagram',wide);}
+   if(Number.isFinite(state.left))container.scrollLeft=state.left;
+   if(Number.isFinite(state.top))container.scrollTop=state.top;
+  }
+  if(state.scroll&&Number.isFinite(state.scroll.x)&&Number.isFinite(state.scroll.y))window.scrollTo(state.scroll.x,state.scroll.y);
+  parent.postMessage({type:'arena-view-restored',state:viewState()},'*');
+ }
+ window.addEventListener('message',event=>{
+  if(event.source!==parent||!event.data)return;
+  if(event.data.type==='arena-capture-view')report(event.data.request);
+  else if(event.data.type==='arena-restore-view')requestAnimationFrame(()=>requestAnimationFrame(()=>restore(event.data.state)));
+ });
  function selected(event){
   if(event.type==='keydown'&&event.key!=='Enter'&&event.key!==' ')return;
   const node=event.target.closest&&event.target.closest('[data-node-id]');
   if(node){event.preventDefault();event.stopImmediatePropagation();document.querySelectorAll('[data-arena-selected]').forEach(n=>n.removeAttribute('data-arena-selected'));node.setAttribute('data-arena-selected','true');parent.postMessage({type:'arena-node-selected',id:node.getAttribute('data-node-id')},'*');}
  }
- document.addEventListener('click',selected,true);
- document.addEventListener('keydown',selected,true);
+ document.addEventListener('click',selected,true);document.addEventListener('keydown',selected,true);
+ let timer;function changed(){clearTimeout(timer);timer=setTimeout(()=>report(null),180);}
+ ['pointerup','wheel','click','keydown','scroll'].forEach(name=>window.addEventListener(name,changed,{passive:true,capture:true}));
+ function ready(){requestAnimationFrame(()=>requestAnimationFrame(()=>parent.postMessage({type:'arena-tree-ready'},'*')));}
+ if(document.readyState==='complete')ready();else window.addEventListener('load',ready,{once:true});
 })();
 </script>'''
 
@@ -391,7 +429,7 @@ def tree_document(state):
     body{margin:0;background:#0b1120;color:#dce8fa;font:14px system-ui;height:100vh;overflow:hidden}svg{width:100%%;height:100%%;touch-action:none}path{fill:none;stroke:#386b86;stroke-width:2}rect{fill:#152336;stroke:#497d98}g{cursor:pointer}g:hover rect,g:focus rect{stroke:#65e1c5;stroke-width:3}text{fill:#edf7ff;font:13px system-ui}.detail{fill:#9fb3c9;font-size:11px}.controls{position:absolute;top:14px;left:14px;display:flex;gap:8px}button{background:#152336;color:#edf7ff;border:1px solid #497d98;border-radius:6px;padding:7px 12px;cursor:pointer}.hint{position:absolute;bottom:12px;left:14px;color:#9fb3c9}
     </style></head><body><div class="controls"><button id="in" aria-label="Zoom in">+</button><button id="out" aria-label="Zoom out">-</button><button id="fit">Fit tree</button></div><svg viewBox="-25 -10 %d %d" aria-label="Arena tournament tree">%s</svg><div class="hint">Click an answer to read results. Scroll to zoom. Drag to pan.</div><script>
     const svg=document.querySelector('svg'),initial=svg.getAttribute('viewBox').split(' ').map(Number);let v=initial.slice(),drag=null;
-    function draw(){svg.setAttribute('viewBox',v.join(' '));}function zoom(scale){v[0]+=v[2]*(1-scale)/2;v[1]+=v[3]*(1-scale)/2;v[2]*=scale;v[3]*=scale;draw();}
+    function draw(){svg.setAttribute('viewBox',v.join(' '));}window.arenaFallbackView={capture:()=>v.slice(),restore:box=>{if(Array.isArray(box)&&box.length===4&&box.every(Number.isFinite)&&box[2]>0&&box[3]>0){v=box.slice();draw();}}};function zoom(scale){v[0]+=v[2]*(1-scale)/2;v[1]+=v[3]*(1-scale)/2;v[2]*=scale;v[3]*=scale;draw();}
     document.getElementById('in').onclick=()=>zoom(.8);document.getElementById('out').onclick=()=>zoom(1.25);document.getElementById('fit').onclick=()=>{v=initial.slice();draw();};
     svg.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY>0?1.12:.89);},{passive:false});
     svg.addEventListener('pointerdown',e=>{if(e.target.closest('[data-node-id]'))return;drag=[e.clientX,e.clientY,v.slice()];svg.setPointerCapture(e.pointerId);});svg.addEventListener('pointermove',e=>{if(!drag)return;const b=svg.getBoundingClientRect();v[0]=drag[2][0]-(e.clientX-drag[0])*v[2]/b.width;v[1]=drag[2][1]-(e.clientY-drag[1])*v[3]/b.height;draw();});svg.addEventListener('pointerup',()=>drag=null);
@@ -404,15 +442,19 @@ _PAGE = r'''<!doctype html>
 :root{color-scheme:dark;--ink:#e3edf8;--line:#30445c;--accent:#65dfc2}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:#0b1120;color:var(--ink);font:14px/1.6 system-ui,sans-serif;height:100dvh;overflow:hidden}header{height:58px;display:flex;align-items:center;gap:16px;padding:8px 18px;border-bottom:1px solid var(--line)}header h1{font-size:17px;white-space:nowrap;margin:0}header p{font-size:12px;color:#a9bfd3;margin:0;max-width:40vw}button:disabled{opacity:.5;cursor:wait}.tools{margin-left:auto;display:flex;gap:8px;align-items:center}button,summary{cursor:pointer}button{border:1px solid var(--line);border-radius:7px;padding:7px 11px;background:#142338;color:var(--ink);font:inherit;text-align:left}button:hover,button[aria-current=true]{border-color:var(--accent);background:#203f45}summary{list-style:none;font-weight:600}.popover{position:relative}.popover>div{position:absolute;right:0;top:36px;z-index:9;background:#132137;padding:16px;border:1px solid var(--line);border-radius:9px;width:min(450px,90vw);box-shadow:0 15px 50px #0009;max-height:75vh;overflow:auto}nav{display:grid;grid-template-columns:1fr 1fr;gap:7px}.workspace{height:calc(100dvh - 58px);display:flex}#tree-region{flex:1;min-width:0}#arena-tree{width:100%;height:100%;border:0}#results-panel{width:clamp(430px,43vw,760px);flex-shrink:0;border-left:1px solid var(--line);background:#101c2e;overflow:auto;padding:22px}#results-panel h2{margin:0;font-size:23px}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:-22px;background:#101c2e;z-index:2;padding:8px 0}#badge{font-size:13px;color:var(--accent)}.tabs{display:flex;gap:8px;margin:12px 0 18px}.tabs button[aria-selected=true]{background:#246756;border-color:var(--accent)}#content h1{font-size:25px}#content h2{font-size:21px;margin:25px 0 12px}#content h3{font-size:17px}p{white-space:pre-wrap;overflow-wrap:anywhere}a{color:var(--accent)}.scope{border:1px solid var(--line);border-radius:8px;padding:12px;margin:16px 0;background:#142338}pre{background:#08111e;padding:14px;overflow:auto;border-radius:7px}code{font-family:Consolas,monospace}table{border-collapse:collapse;width:100%}td,th{padding:8px;border:1px solid var(--line);text-align:left}.table-wrap{overflow:auto}#content iframe{width:100%;height:68vh;border:1px solid var(--line);border-radius:8px;background:#fff}.score{font-size:12px;color:#99aec3}.match button{margin-right:7px}.round{margin-top:16px}#rubric-dialog{position:fixed;z-index:20;inset:70px max(20px,calc((100vw - 850px)/2));overflow:auto;background:#132137;border:1px solid var(--line);border-radius:12px;padding:24px;box-shadow:0 0 0 100vmax #0009}textarea{width:100%;min-height:180px;background:#0a1525;color:var(--ink);padding:12px;border:1px solid #4a6888;border-radius:7px;font:inherit;resize:vertical}label{display:block;font-weight:600;margin:14px 0 6px}.rubric-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}#rubric-status{color:var(--accent)}.pending{color:#e6c887}@media(max-width:850px){header{gap:8px;padding:8px}header>p{display:none}.tools{gap:8px}button{padding:7px 9px}.workspace:has(#results-panel:not([hidden])){flex-direction:column}#results-panel{width:100%;height:58%;border-left:0;border-top:1px solid var(--line);padding:16px}#tree-region{min-height:35%}.panel-head{top:-16px}#rubric-dialog{inset:65px 10px 10px}}
 @media(max-width:850px){header{height:88px;flex-wrap:wrap;align-content:center;row-gap:3px}header #run-status{display:block;order:2;flex:0 0 100%;max-width:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.workspace{height:calc(100dvh - 88px)}#rubric-dialog{inset:98px 10px 10px}}
 </style></head><body>
-<header><h1>Arena tree</h1><p id="run-status" role="status">__HEADLINE__</p><div class="tools"><details class="popover" id="answer-picker"><summary>Find answer</summary><div><nav aria-label="All answers">__SIDEBAR__</nav></div></details><button id="rubric-button">Task &amp; rubric</button><button id="stop-arena" hidden>Stop run</button><details class="popover"><summary>Run details</summary><div><p>__COUNTER__</p><p>Judge scores compare the answers; they are not accuracy percentages.</p><details><summary>Match results</summary>__BRACKET__</details></div></details></div></header>
+<header><h1>Arena tree</h1><p id="run-status" role="status">__HEADLINE__</p><div class="tools"><details class="popover" id="answer-picker"><summary>Find answer</summary><div><nav aria-label="All answers">__SIDEBAR__</nav></div></details><button id="rubric-button">Task &amp; rubric</button><button id="stop-arena" hidden>Stop run</button><details class="popover"><summary>Run details</summary><div><p id="job-counter">__COUNTER__</p><p>Judge scores compare the answers; they are not accuracy percentages.</p><details><summary>Match results</summary><div id="match-results">__BRACKET__</div></details></div></details></div></header>
 <div class="workspace"><section id="tree-region" aria-label="Arena tree"><iframe id="arena-tree" title="Arena tournament tree" sandbox="allow-scripts allow-downloads"></iframe></section><article id="results-panel" hidden aria-label="Selected answer results"><div class="panel-head"><h2 id="selected"></h2><button id="close-results" aria-label="Close results">Close</button></div><p id="badge"></p><div class="tabs" role="tablist"><button role="tab" data-tab="answer">Answer</button><button role="tab" data-tab="implementation">Implementation</button><button role="tab" data-tab="archify">Archify</button></div><p id="answer-note" class="score">Original answer, unchanged. Implementation guide reflects the required outputs.</p><div id="content"></div></article></div>
 <section id="rubric-dialog" role="dialog" aria-modal="true" aria-labelledby="rubric-title" hidden><div class="panel-head"><h2 id="rubric-title">Prepare an Arena run</h2><button id="close-rubric" aria-label="Close rubric">Close</button></div><label for="arena-task">Question / task</label><p class="score">Enter the question you want the answers to solve. Saved runs show their original task here.</p><textarea id="arena-task" placeholder="What should the 16 independent answers solve?"></textarea><details><summary>Rubric used for this run</summary><div id="current-rubric"></div></details><label for="user-rubric">Grading guidance (optional)</label><p>Describe what a strong answer must achieve, what evidence to check, and what should fail. These criteria accompany the standard scoring rubric. Leave blank to use the standard rubric.</p><textarea id="user-rubric" placeholder="Example: Require reproducible evidence, cite the exact source, and prioritize a working implementation."></textarea><p class="score">Start creates 16 fixed answers, 15 judgments, and 2 finalist guides: 33 worker jobs. It uses your signed-in Codex account. Your task and rubric are saved before work begins.</p><div class="rubric-actions"><button id="start-arena" disabled>Start Arena</button><button id="download-rubric">Download rubric</button></div><p id="rubric-status" role="status"></p></section>
 <template id="diagram-frame"><iframe sandbox="allow-scripts allow-downloads"></iframe></template>
 <script id="arena-data" type="application/json">__DATA__</script>
 <script>
 'use strict';
-const arena=JSON.parse(document.getElementById('arena-data').textContent),tree=document.getElementById('arena-tree'),panel=document.getElementById('results-panel');let selected=null,activeTab='answer';
+let arena=JSON.parse(document.getElementById('arena-data').textContent);const tree=document.getElementById('arena-tree'),panel=document.getElementById('results-panel');let selected=null,activeTab='answer';
+let treeView=null,pendingTree=null,cameraRequest=0,cameraTimer=null,refreshBusy=false;
+try{treeView=JSON.parse(sessionStorage.getItem('arena-tree-view:'+location.pathname)||'null');}catch(error){}
 tree.srcdoc=arena.tree_html;
+function rememberView(state){if(!state)return;treeView=state;try{sessionStorage.setItem('arena-tree-view:'+location.pathname,JSON.stringify(state));}catch(error){}}
+function replaceTree(html){pendingTree=html;const request=++cameraRequest;tree.contentWindow.postMessage({type:'arena-capture-view',request},'*');clearTimeout(cameraTimer);cameraTimer=setTimeout(()=>{if(pendingTree!==null){tree.srcdoc=pendingTree;pendingTree=null;}},500);}
 function openPanel(){panel.hidden=false;document.getElementById('answer-picker').open=false;}
 function select(id,tab='answer'){
  if(!Object.prototype.hasOwnProperty.call(arena.answers,id))return;
@@ -442,10 +484,14 @@ function matchResult(id){
  history.replaceState(null,'','#match='+encodeURIComponent(id));
 }
 window.addEventListener('message',event=>{
- if(event.source!==tree.contentWindow||!event.data||event.data.type!=='arena-node-selected'||typeof event.data.id!=='string')return;
+ if(event.source!==tree.contentWindow||!event.data)return;
+ if(event.data.type==='arena-tree-ready'){if(treeView)tree.contentWindow.postMessage({type:'arena-restore-view',state:treeView},'*');return;}
+ if(event.data.type==='arena-view-restored'){rememberView(event.data.state);return;}
+ if(event.data.type==='arena-view-state'){rememberView(event.data.state);if(pendingTree!==null&&event.data.request===cameraRequest){clearTimeout(cameraTimer);tree.srcdoc=pendingTree;pendingTree=null;}return;}
+ if(event.data.type!=='arena-node-selected'||typeof event.data.id!=='string')return;
  const id=event.data.id;if(id.startsWith('draft_'))select(id.slice(6));else if(arena.answers[id])select(id);else if(id==='arena'&&arena.champion)select(arena.champion);else matchResult(id.replace('_','-'));
 });
-document.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.answer)));
+document.addEventListener('click',event=>{const button=event.target.closest('[data-answer]');if(button)select(button.dataset.answer);});
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>select(selected,b.dataset.tab)));
 function closeResults(){panel.hidden=true;history.replaceState(null,'',location.pathname+location.search);}
 document.getElementById('close-results').onclick=closeResults;
@@ -501,5 +547,24 @@ stopButton.onclick=async()=>{if(!appConfig)return;stopButton.disabled=true;try{c
 if(location.protocol!=='file:'){connectApp();setInterval(pollStatus,1500);}
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!rubricDialog.hidden)document.getElementById('close-rubric').click();else closeResults();}});
-if(location.protocol!=='file:')setInterval(async()=>{try{const r=await fetch(__STATE_FILE__,{cache:'no-store'});if(r.ok&&(await r.json()).state_sha256!==arena.state_sha256)location.reload();}catch(error){}},5000);
+async function refreshFromExport(){
+ if(refreshBusy)return;refreshBusy=true;
+ try{
+  const marker=await fetch(__STATE_FILE__,{cache:'no-store'});if(!marker.ok||(await marker.json()).state_sha256===arena.state_sha256)return;
+  const response=await fetch(location.pathname,{cache:'no-store'});if(!response.ok)return;
+  const nextDocument=new DOMParser().parseFromString(await response.text(),'text/html'),data=nextDocument.getElementById('arena-data');if(!data)return;
+  const next=JSON.parse(data.textContent);if(!next.answers||!Array.isArray(next.rounds)||typeof next.tree_html!=='string')return;
+  const old=arena,scroll=panel.scrollTop,body=document.getElementById('content');
+  const answerChanged=selected&&JSON.stringify(old.answers[selected])!==JSON.stringify(next.answers[selected]);
+  const matchesChanged=!selected&&JSON.stringify(old.rounds)!==JSON.stringify(next.rounds);
+  arena=next;
+  for(const id of ['job-counter','match-results']){const fresh=nextDocument.getElementById(id),current=document.getElementById(id);if(fresh&&current)current.innerHTML=fresh.innerHTML;}
+  const nav=document.querySelector('nav[aria-label="All answers"]'),freshNav=nextDocument.querySelector('nav[aria-label="All answers"]');if(nav&&freshNav)nav.innerHTML=freshNav.innerHTML;
+  document.querySelectorAll('[data-answer]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.answer===selected)));
+  if(old.tree_html!==next.tree_html)replaceTree(next.tree_html);
+  if(!panel.hidden){if(answerChanged)select(selected,activeTab);else if(matchesChanged)restoreHash();panel.scrollTop=scroll;}
+ }catch(error){/* Keep the current reading view while a later update retries. */}
+ finally{refreshBusy=false;}
+}
+if(location.protocol!=='file:')setInterval(refreshFromExport,5000);
 </script></body></html>'''

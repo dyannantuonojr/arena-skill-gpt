@@ -236,10 +236,10 @@ class ArenaHandler(BaseHTTPRequestHandler):
         self._reply(200, content, mime)
 
 
-def make_server(data_root, port=8767, runner=None, codex=None, node=None):
+def make_server(data_root, port=8767, runner=None, codex=None, node=None, repo_root=None):
     if runner is None:
         from arena_runner import ArenaRunner
-        runner = ArenaRunner(data_root, codex=codex, node=node)
+        runner = ArenaRunner(data_root, codex=codex, node=node, repo_root=repo_root)
     return ArenaHTTPServer(data_root, port, runner)
 
 
@@ -252,8 +252,16 @@ def main(argv=None):
     parser.add_argument('--data-dir', type=Path, default=Path.home() / '.arena' / 'runs')
     parser.add_argument('--codex')
     parser.add_argument('--node')
+    parser.add_argument('--repo-root', type=Path, help='local Git working tree for validating repository evidence')
+    parser.add_argument('--open-run', help='show a saved run without launching workers')
     args = parser.parse_args(argv)
-    server = make_server(args.data_dir, args.port, codex=args.codex, node=args.node)
+    server = make_server(args.data_dir, args.port, codex=args.codex, node=args.node, repo_root=args.repo_root)
+    if args.open_run:
+        try:
+            server.runner.restore(args.open_run)
+        except Exception:
+            server.server_close()
+            raise
     print('http://127.0.0.1:%d/' % server.server_port, flush=True)
     try:
         server.serve_forever()

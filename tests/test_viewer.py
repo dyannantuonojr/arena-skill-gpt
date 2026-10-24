@@ -69,6 +69,16 @@ class ViewerTests(unittest.TestCase):
         tree.write_text(original.replace('Original native', 'Updated native'), encoding='utf-8')
         self.assertNotEqual(fingerprint, self.view.state_fingerprint(self.state))
 
+    def test_live_updates_do_not_reload_the_page_or_discard_the_tree_camera(self):
+        _, page, data = self.export()
+        self.assertNotIn('location.reload()', page)
+        self.assertIn('DOMParser', page)
+        self.assertIn('arena-capture-view', page)
+        self.assertIn('arena-restore-view', page)
+        self.assertIn('arena-view-state', data['tree_html'])
+        self.assertIn('arena-tree-ready', data['tree_html'])
+        self.assertIn('window.arenaFallbackView', data['tree_html'])
+
     def test_task_prompt_precedes_rubric_and_start_submits_directly(self):
         task = 'Original question: compare the implementations.\nRespect the supplied constraints.'
         (self.root/'task.md').write_bytes(task.encode('utf-8'))

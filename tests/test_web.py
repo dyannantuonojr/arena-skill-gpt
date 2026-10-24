@@ -7,9 +7,11 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'skills' / 'arena'))
 from arena_web import make_server, MAX_BODY
+import arena_web as W
 
 
 class FakeRunner:
@@ -171,6 +173,26 @@ class WebTests(unittest.TestCase):
         status, result, _ = self.request('POST', '/api/run', {'task': 'x'})
         self.assertEqual(status, 500)
         self.assertNotIn('secret', json.dumps(result))
+
+
+class WebStartupTests(unittest.TestCase):
+    def test_repository_root_is_forwarded_from_operator_configuration(self):
+        server = mock.Mock()
+        server.server_port = 8767
+        server.serve_forever.side_effect = KeyboardInterrupt
+        with mock.patch.object(W, 'make_server', return_value=server) as factory:
+            W.main(['--repo-root', 'example-repository'])
+        self.assertEqual(factory.call_args.kwargs['repo_root'], Path('example-repository'))
+
+    def test_open_run_restores_saved_status_without_starting_workers(self):
+        server = mock.Mock()
+        server.server_port = 8767
+        server.serve_forever.side_effect = KeyboardInterrupt
+        with mock.patch.object(W, 'make_server', return_value=server):
+            W.main(['--port', '8767', '--open-run', 'saved-run'])
+        server.runner.restore.assert_called_once_with('saved-run')
+        server.runner.start.assert_not_called()
+        server.server_close.assert_called_once()
 
 
 if __name__ == '__main__':

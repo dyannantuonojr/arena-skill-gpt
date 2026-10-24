@@ -726,7 +726,7 @@ def _card_values(card):
     }
 
 
-def render_job(state, job, templates, task):
+def render_job(state, job, templates, task, artifact_renderer="worker", evidence_root=None):
     verify_frozen_rubric(state)
     d = state["dir"]
     agents = state["agents"]
@@ -777,6 +777,29 @@ def render_job(state, job, templates, task):
         v.update(agent=aid, solution=agents[aid]["solution"], artifact_dir=job["directory"],
                  archify_skill=os.path.join(HERE, "vendor", "archify", "SKILL.md"),
                  archify_cli=os.path.join(HERE, "vendor", "archify", "bin", "archify.mjs"))
+    if artifact_renderer not in ("worker", "runner"):
+        raise ArenaError("artifact_renderer must be worker or runner")
+    if kind == "artifact":
+        v["artifact_delivery"] = (
+            "Write implementation.md and candidate.json, using a native Archify diagram type. "
+            "Read the bundled Archify authoring skill at {{archify_skill}} and its schema references. "
+            "Do not run finalize or generate diagram.html, receipts, or manifest.json. "
+            "The trusted runner will generate diagram.html and real finalize/browser receipts after you exit. "
+            "You may write a separate meaning-review.md comparing the candidate to the recommendation. "
+            "Use node.sources only for real committed repository evidence with truthful pinned meta.repository; "
+            "never put an unversioned frozen answer path there. For nonrepository tasks, cite answer sections "
+            "in plain diagram cards and implementation.md and mark proposed steps honestly. "
+            "The accepted package automatically binds the original answer SHA; retain valid repository provenance."
+            if artifact_renderer == "runner" else
+            "Write implementation.md, candidate.json, and an actual Archify-generated diagram.html that helps implement this recommendation. Read the bundled Archify authoring skill at {{archify_skill}}. Run its bundled CLI with Node at {{archify_cli}}; no separate Archify installation is needed. Resolve authoring references relative to that skill. Prefer an implementation workflow when another diagram type does not fit; do not omit Archify as optional. Run real finalize validation including browser checks, storing its passing summary at review/diagram.finalize-summary.json. Bind the candidate and HTML to that receipt with exact hashes and actual canonical paths. Never invent a passing receipt or diagram output. If tooling is unavailable or validation cannot be completed, report incomplete with diagnostics instead of claiming success.")
+        if artifact_renderer == "runner":
+            v["artifact_delivery"] += (" The operator configured this read-only repository evidence root: " + str(evidence_root) +
+                                       ". Inspect committed source there and pin truthful repository identity; do not modify that repository."
+                                       if evidence_root else
+                                       " No repository evidence root is configured. Use plain answer citations for nonrepository tasks; "
+                                       "if the task requires real repository evidence, report the missing operator --repo-root configuration.")
+        v["artifact_delivery"] = fill(v["artifact_delivery"], v)
+        v["artifact_completion"] = ("When implementation.md and candidate.json are written, reply only:" if artifact_renderer == "runner" else "When all required files and real passing receipts are written, reply only:")
     body = fill(templates[kind], v)
     if kind == "competitor" and state.get("has_user_rubric"):
         with open(os.path.join(d, "user-rubric.md"), encoding="utf-8", newline="") as fh:
@@ -788,7 +811,7 @@ def render_job(state, job, templates, task):
     return body
 
 
-def write_prompts(state, phase):
+def write_prompts(state, phase, artifact_renderer="worker", evidence_root=None):
     verify_frozen_rubric(state)
     verify_frozen_solutions(state)
     if state.get("mode", "evolve") == "select" and phase in ("judge", "final", "artifacts"):
@@ -801,7 +824,7 @@ def write_prompts(state, phase):
     for j in jobs:
         for p in j["outputs"] + [j["prompt"]]:
             os.makedirs(os.path.dirname(p), exist_ok=True)
-        body = render_job(state, j, templates, task)
+        body = render_job(state, j, templates, task, artifact_renderer=artifact_renderer, evidence_root=evidence_root)
         with open(j["prompt"], "w", encoding="utf-8", newline="") as fh:
             fh.write(body + "\n")
     if phase == "spawn":

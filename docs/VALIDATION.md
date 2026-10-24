@@ -82,3 +82,27 @@ remain readable; the direct Start button requires arena_web.py to be running.
 Windows CI additionally exposed short/long path alias mismatch during diagram
 publication. The runner now canonicalizes its publication root; a real 8.3 alias
 regression reproduces the failure and passes with the fix.
+
+
+v4.0.2 repair verification (2026-10-24): the Windows signed-in test completed
+all 31 core jobs; both finalist package attempts had failed at the sandboxed
+Archify path-identity check. Recovery used the saved candidates and guides,
+retained backups and failure history, and launched zero model jobs. Unversioned
+answer citations were preserved separately from committed Git provenance. Both
+packages passed the actual bundled finalize validate/deliver/check/browser-check
+gates, acceptance, and frozen-answer hash checks. Passive restore reports complete.
+
+The app now owns trusted finalization after the sandboxed author exits. A tiny
+local-only committed Git fixture additionally passed all four gates and package
+acceptance with a configured repository root and pinned source evidence. Renderer
+infrastructure failures do not consume another model authoring attempt. The
+bundled Archify sources remain unchanged.
+
+Browser regression with explicitly labeled software fixtures kept the exact
+150% native camera transform through both an answer-only update and a newly
+rendered tree update. The selected answer also survived; updated text was readable.
+The recovered real viewer displayed both finalists' native Archify outputs.
+These checks did not rerun or revise any tournament answer or judgment.
+
+Final repair suite: 134 tests passed (four filesystem symlink privilege skips on
+this Windows account). Skill validation and git diff whitespace checks passed.
