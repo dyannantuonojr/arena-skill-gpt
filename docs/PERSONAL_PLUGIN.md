@@ -1,10 +1,13 @@
 # Personal Arena MCP plugin
 
-The optional plugin adds a tree interface and six MCP tools to Arena. Core Arena
-still works through `arena_web.py`. Opening the plugin never starts a tournament.
-Enter a question, optionally enter grading guidance, then press Start Arena.
-Every answer can be selected in the tree or Find answer menu. Both finalists have
-Implementation and Archify tabs. There is no mandatory planning step.
+The optional plugin adds a shared tree interface for Arena and Grudge Match,
+workflow controls, and app-only supporting-file tools. Core Arena still works
+through `arena_web.py`. Opening the plugin never starts a run. Select a mode,
+enter a question, optionally attach files and enter grading guidance, then press
+Start Arena or Start Grudge Match. Every answer can be selected in the tree or
+Find answer menu. Arena packages both finalists; Grudge Match packages only its
+winner. Packaged answers have Implementation and Archify tabs. There is no
+mandatory planning step.
 
 ## Prepare this computer
 
@@ -29,7 +32,11 @@ plugin does not make ChatGPT on another device reach this computer.
 For manual stdio configuration, launch the absolute path to
 `skills/arena/plugin/launch.py` with Python. Reserve stdout for MCP. Tools are
 `open_arena`, `start_run`, `get_run_status`, `get_answer`,
-`get_finalist_package`, and `stop_run`.
+`get_finalist_package`, and `stop_run` for Arena. Grudge Match adds
+`open_grudge_match`, `start_grudge_match`, `get_grudge_status`,
+`get_grudge_answer`, `get_grudge_winner_package`, and `stop_grudge_match`.
+The UI uses the app-only `upload_supporting_document` and
+`read_supporting_document` tools for uploads and previews.
 
 ## Private remote connection
 
@@ -125,4 +132,4 @@ Use the **Arena / Grudge Match** toggle above the question in the same UI. The s
 
 ## Supporting-file uploads
 
-Use **Attach files** below the question in either mode. It accepts XLSX/CSV, PDF, DOCX, TXT and Markdown, with preview/remove controls. All workers use the same frozen run copies. Uploading never starts a run; job counts stay33/6. Refresh the plugin after installing the updated locked document parsers. See [supporting-document details](SUPPORTING_DOCUMENTS.md).
+Use **Attach files** below the question in either mode. It accepts XLSX/CSV, PDF, DOCX, TXT and Markdown, with preview/remove controls. All workers use the same frozen run copies. Uploading never starts a run; job counts stay 33/6. Refresh the plugin after installing the updated locked document parsers. See [supporting-document details](SUPPORTING_DOCUMENTS.md).

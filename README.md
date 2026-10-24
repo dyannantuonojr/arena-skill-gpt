@@ -10,9 +10,8 @@ review and judgment in the interactive tree.
 
 **Work in progress.** This is an experimental project under active development.
 Grading and evidence checks can miss errors; the winning answer is not guaranteed
-to be correct. Grudge Match, evidence checking and uploads are currently on the
-[`grudge-match` development branch](https://github.com/dyannantuonojr/arena-skill-gpt/tree/grudge-match)
-and [draft PR #1](https://github.com/dyannantuonojr/arena-skill-gpt/pull/1).
+to be correct. Arena, Grudge Match, evidence checking and supporting-document
+uploads are included together on the default `main` branch.
 
 | Choose a mode | How it helps answer your question | Jobs before retries |
 | --- | --- | --- |
@@ -24,8 +23,8 @@ Rubric scores compare the answers; they are not accuracy percentages.
 
 ## Get started in the ChatGPT interface
 
-1. For the current development version, clone the feature branch:
-   `git clone --branch grudge-match https://github.com/dyannantuonojr/arena-skill-gpt.git`.
+1. Clone the repository's default branch:
+   `git clone https://github.com/dyannantuonojr/arena-skill-gpt.git`.
 2. Follow [personal plugin setup](docs/PERSONAL_PLUGIN.md) to install the runtime,
    sign into Codex and connect it to ChatGPT. Cloning alone does not install or
    connect a ChatGPT plugin.
