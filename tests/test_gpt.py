@@ -11,9 +11,9 @@ from test_bracket import B, BRACKET, TempDir, cli, load, write
 
 
 class GPTDefaults(TempDir):
-    def test_default_run_deals_16_and_plans_91_jobs(self):
+    def test_default_run_deals_16_and_plans_31_jobs(self):
         plan = json.loads(self.ok('plan', '--json'))
-        self.assertEqual((plan['agents'], plan['rounds'], plan['calls']), (16, 4, 91))
+        self.assertEqual((plan['agents'], plan['rounds'], plan['calls']), (16, 4, 31))
         d = os.path.join(self.tmp, 'default')
         self.ok('init', '--task', 'Find the simplest correct solution.', '--dir', d)
         self.assertEqual(len(load(d)['agents']), 16)
@@ -37,7 +37,7 @@ class GPTDefaults(TempDir):
 
     def test_suggested_resume_command_preserves_explicit_run(self):
         d = os.path.join(self.tmp, 'run with spaces')
-        self.ok('init', '--agents', '2', '--task', 't', '--dir', d)
+        self.ok('init', '--mode', 'evolve', '--agents', '2', '--task', 't', '--dir', d)
         output = self.ok('next', '--dir', d)
         command = next(line.split('1. ', 1)[1] for line in output.splitlines() if '1. ' in line)
         if os.name == 'nt':
@@ -75,7 +75,7 @@ class StrictJudging(TempDir):
 
     def test_wrong_match_verdict_is_quarantined_and_job_remains(self):
         d = os.path.join(self.tmp, 'wrong-match')
-        self.ok('init', '--agents', '2', '--task', 't', '--dir', d)
+        self.ok('init', '--mode', 'evolve', '--agents', '2', '--task', 't', '--dir', d)
         state = load(d)
         match = state['rounds'][0]['matches'][0]
         verdict = self.verdict()
@@ -97,7 +97,7 @@ class StrictJudging(TempDir):
 
     def test_match_verdict_requires_standing_lists_for_both_sides(self):
         d = os.path.join(self.tmp, 'missing-standing')
-        self.ok('init', '--agents', '2', '--task', 't', '--dir', d)
+        self.ok('init', '--mode', 'evolve', '--agents', '2', '--task', 't', '--dir', d)
         state = load(d)
         match = state['rounds'][0]['matches'][0]
         verdict = self.verdict()
@@ -112,7 +112,7 @@ class StrictJudging(TempDir):
 class OutputIntegrity(TempDir):
     def test_failure_placeholders_do_not_complete_spawn_jobs(self):
         d = os.path.join(self.tmp, 'placeholder')
-        self.ok('init', '--agents', '2', '--task', 't', '--dir', d)
+        self.ok('init', '--mode', 'evolve', '--agents', '2', '--task', 't', '--dir', d)
         state = load(d)
         self.ok('prompts', 'spawn', '--dir', d)
         for value in ('NO OUTPUT', '  \n\t'):
@@ -123,7 +123,7 @@ class OutputIntegrity(TempDir):
 
     def test_zero_attacks_marker_is_a_completed_attack(self):
         d = os.path.join(self.tmp, 'no-attacks')
-        self.ok('init', '--agents', '2', '--task', 't', '--dir', d)
+        self.ok('init', '--mode', 'evolve', '--agents', '2', '--task', 't', '--dir', d)
         state = load(d)
         for phase, text in (('spawn', 'A solution.'), ('attack', 'NO ATTACKS FOUND')):
             self.ok('prompts', phase, '--dir', d)

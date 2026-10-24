@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "arena-skill-gpt",
-  "description": "Sixteen independent competitors, attack and defense, and rubric-based judging for capable ChatGPT and Codex hosts.",
+  "description": "Arena 16 fixed-answer selection for GPT and Codex",
   "owner": {
     "name": "dyannantuonojr"
   },
   "plugins": [
     {
       "name": "arena-skill-gpt",
-      "description": "Sixteen independent competitors, attack and defense, and rubric-based judging for capable ChatGPT and Codex hosts.",
+      "description": "16 fixed answers + 15 independent judgments = 31 jobs.",
       "source": "./",
       "category": "productivity",
       "homepage": "https://github.com/dyannantuonojr/arena-skill-gpt"

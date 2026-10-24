@@ -65,7 +65,7 @@ class SimulatedTournament(TempDir):
 
     def run_tournament(self, n, seed):
         d = os.path.join(self.tmp, "run-%d" % n)
-        self.ok("init", "--agents", n, "--seed", seed, "--task", "Simulated task.", "--dir", d)
+        self.ok("init", "--mode", "evolve", "--agents", n, "--seed", seed, "--task", "Simulated task.", "--dir", d)
         rng = random.Random(seed)
         alive_at_start = []
         while True:
@@ -131,7 +131,7 @@ class SimulatedTournament(TempDir):
         data = B.load_strategies()
         for n in (2, 3, 5, 9, 16, 31, 64, 100, 101, 144, 250):
             for seed in range(3):
-                st = B.new_state(n, seed, data, os.path.join(self.tmp, "api"))
+                st = B.new_state(n, seed, data, os.path.join(self.tmp, "api"), mode="evolve")
                 rng = random.Random(seed)
                 sizes = []
                 while not st["champion"]:
@@ -204,9 +204,9 @@ class Dealer(unittest.TestCase):
 class Plan(unittest.TestCase):
     def test_numbers(self):
         self.assertEqual(B.bracket_sizes(100), [100, 50, 25, 13, 7, 4, 2, 1])
-        t = B.plan_totals(100, wave=10)
+        t = B.plan_totals(100, wave=10, mode="evolve")
         self.assertEqual((t["rounds"], t["calls"], t["waves"]), (7, 595, 70))
-        t = B.plan_totals(16, wave=10)
+        t = B.plan_totals(16, wave=10, mode="evolve")
         self.assertEqual((t["rounds"], t["calls"], t["waves"]), (4, 91, 16))
 
 
@@ -286,7 +286,7 @@ class FullPipelineWithFakeAgents(TempDir):
         base_file = os.path.join(self.tmp, "baseline.md")
         write(task_file, self.TASK)
         write(base_file, "The sea is big.")
-        self.ok("init", "--agents", 16, "--seed", 9, "--task-file", task_file, "--baseline-file", base_file, "--dir", d)
+        self.ok("init", "--mode", "evolve", "--agents", 16, "--seed", 9, "--task-file", task_file, "--baseline-file", base_file, "--dir", d)
         self.assertTrue(os.path.isfile(os.path.join(d, "rubric.md")), "the run has its own rubric copy")
         rng = random.Random(9)
         seen = []
@@ -351,7 +351,7 @@ class FullPipelineWithFakeAgents(TempDir):
 
     def test_unreadable_verdict_is_set_aside_and_rerun(self):
         d = os.path.join(self.tmp, "bad")
-        self.ok("init", "--agents", 2, "--seed", 1, "--task", "t", "--dir", d)
+        self.ok("init", "--mode", "evolve", "--agents", 2, "--seed", 1, "--task", "t", "--dir", d)
         state = load(d)
         m = state["rounds"][0]["matches"][0]
         path = B.verdict_out(d, 1, m["id"])

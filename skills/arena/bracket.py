@@ -19,8 +19,8 @@ own context gets compacted halfway through a 16-agent run.
     python3 bracket.py winner                        # the survivor, what it beat, the attacks it survived
     python3 bracket.py card <agent_id>               # one competitor's strategy card
 
-Phases, in order: spawn, then per round attack, defend, judge; then final (only when
-there is a rejected answer to beat). Every command takes --dir; without it, the run
+Phases: default select runs spawn, then judge per round; explicit evolve runs
+spawn, attack, defend, judge. Final is optional when there is a baseline. Every command takes --dir; without it, the run
 named in .arena/LATEST is used.
 
 Python 3.8+, standard library only.
@@ -33,6 +33,7 @@ import random
 import re
 import sys
 import shlex
+import hashlib
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -45,11 +46,13 @@ DEFAULT_AGENTS = 16
 MAX_AGENTS = 16
 QUICK_AGENTS = 16
 DEFAULT_WAVE = 1           # Portable default; use only runtime-confirmed worker capacity
+DEFAULT_MODE = "select"
+MODES = ("select", "evolve")
 ROOT = ".arena"
 LATEST = "LATEST"
 STATE_FILE = "arena.json"
 PHASES = ("spawn", "attack", "defend", "judge", "final")
-TEMPLATES = ("competitor", "attacker", "defender", "judge", "final")
+TEMPLATES = ("competitor", "attacker", "defender", "judge", "selector", "final")
 CALLS_PER_MATCH = 5        # 2 attacks, 2 defenses, 1 judge
 
 # Mirrors the table in rubric.md. tests/test_bracket.py checks they agree.
@@ -273,7 +276,9 @@ def _has_output(path):
 
 # ---------------------------------------------------------------- the bracket
 
-def new_state(n, seed, data, run_dir, wave=DEFAULT_WAVE, has_baseline=False):
+def new_state(n, seed, data, run_dir, wave=DEFAULT_WAVE, has_baseline=False, mode=DEFAULT_MODE):
+    if mode not in MODES:
+        raise ArenaError("unknown tournament mode")
     run_dir = os.path.abspath(run_dir)
     ids = agent_ids(n)
     agents = {}
@@ -297,6 +302,7 @@ def new_state(n, seed, data, run_dir, wave=DEFAULT_WAVE, has_baseline=False):
         "agents_n": n,
         "cards_available": combo_count(data),
         "wave": wave,
+        "mode": mode,
         "dir": run_dir,
         "has_baseline": bool(has_baseline),
         "agents": agents,
@@ -317,6 +323,14 @@ def pair_round(state, rnd, alive):
     rng = random.Random("arena-pair:%s:%d" % (state["seed"], rnd))
     pool = sorted(alive)
     rng.shuffle(pool)
+    fixed = state.get("mode", "evolve") == "select" and rnd > 1
+    if fixed:
+        previous = state["rounds"][-1]
+        pool = [m["winner"] for m in previous["matches"]]
+        if previous["bye"]:
+            pool.append(previous["bye"])
+        if set(pool) != set(alive) or len(pool) != len(alive):
+            raise ArenaError("fixed bracket does not match recorded survivors")
     bye = None
     if len(pool) % 2:
         fewest = min(agents[a]["byes"] for a in pool)
@@ -327,7 +341,7 @@ def pair_round(state, rnd, alive):
     while pool:
         a = pool.pop(0)
         mode = agents[a]["card"]["reasoning"]["id"]
-        j = next((k for k, b in enumerate(pool) if agents[b]["card"]["reasoning"]["id"] != mode), 0)
+        j = 0 if fixed else next((k for k, b in enumerate(pool) if agents[b]["card"]["reasoning"]["id"] != mode), 0)
         b = pool.pop(j)
         if rng.random() < 0.5:
             a, b = b, a
@@ -410,6 +424,7 @@ def record(state, mid, winner, reason=None, survived=None, scores=None, source="
 def advance(state):
     """Close the current round: eliminate every loser, carry the winners' revised
     solutions forward, give the bye its free pass, and open the next round."""
+    verify_frozen_solutions(state, required=True)
     rd = current_round(state)
     if rd is None:
         raise ArenaError("no round is open" + (" (the arena has a champion)" if state["champion"] else ""))
@@ -425,7 +440,7 @@ def advance(state):
         loser["eliminated_by"] = m["winner"]
         for aid in (m["a"], m["b"]):
             rev = revised_out(state["dir"], rd["n"], m["id"], aid)
-            if _has_output(rev):
+            if state.get("mode", "evolve") == "evolve" and _has_output(rev):
                 state["agents"][aid]["solution"] = rev
         survivors.append(m["winner"])
     if rd["bye"]:
@@ -545,6 +560,7 @@ def collect(state):
     """Record every verdict the judges have written for the open round (or the final
     check). An unreadable verdict is set aside as <name>.unreadable so the judge job
     shows up as missing again and gets re-run."""
+    verify_frozen_solutions(state, required=True)
     d = state["dir"]
     results = []
     if state["champion"]:
@@ -616,6 +632,8 @@ def phase_jobs(state, phase):
     Matches that already have a recorded winner are skipped."""
     if phase not in PHASES:
         raise ArenaError("unknown phase '%s' (one of: %s)" % (phase, ", ".join(PHASES)))
+    if state.get("mode", "evolve") == "select" and phase in ("attack", "defend"):
+        return []
     d = state["dir"]
     jobs = []
     if phase == "spawn":
@@ -711,7 +729,7 @@ def render_job(state, job, templates, task):
                 % os.path.join(d, "baseline.md"))
         else:
             v["baseline_note"] = "There is no earlier answer to beat. Start from the task."
-        v.update(agent=aid, out=job["outputs"][0])
+        v.update(agent=aid, out=job["outputs"][0], competition_note=("Your submitted answer is frozen. Independent judges compare it against other fixed answers; winners advance unchanged through fixed branches." if state.get("mode", "evolve") == "select" else "Your solution will be attacked by other competitors and scored by a judge, round after round, until one solution is left."))
     elif kind == "attacker":
         me, opp = job["agent"], job["opponent"]
         v.update(_card_values(agents[me]["card"]))
@@ -732,6 +750,9 @@ def render_job(state, job, templates, task):
                  first_attacks=attack_out(d, n, mid, b), second_attacks=attack_out(d, n, mid, a),
                  first_defense=defense_out(d, n, mid, a), second_defense=defense_out(d, n, mid, b),
                  out=job["outputs"][0])
+        if state.get("mode", "evolve") == "select":
+            kind = "selector"
+            v.update(first_solution=agents[a]["solution"], second_solution=agents[b]["solution"])
     elif kind == "final":
         v.update(rounds=rounds_played(state),
                  x_solution=os.path.join(d, "final", "X.md"),
@@ -741,6 +762,8 @@ def render_job(state, job, templates, task):
 
 
 def write_prompts(state, phase):
+    if state.get("mode", "evolve") == "select" and phase in ("judge", "final"):
+        freeze_solutions(state)
     jobs = phase_jobs(state, phase)
     if not jobs:
         return jobs
@@ -771,6 +794,7 @@ def write_prompts(state, phase):
 def next_action(state):
     """(phase, jobs_left, jobs_total). phase is one of spawn, attack, defend, judge,
     final, collect, advance, done."""
+    verify_frozen_solutions(state)
     spawn = phase_jobs(state, "spawn")
     left = missing_jobs(spawn)
     if left:
@@ -795,23 +819,56 @@ def next_action(state):
 
 # ---------------------------------------------------------------- plan
 
-def plan_rows(n, wave=DEFAULT_WAVE):
+def plan_rows(n, wave=DEFAULT_WAVE, mode=DEFAULT_MODE):
     if n < 1 or wave < 1:
         raise ArenaError("agents and wave must be at least 1")
     rows = []
     for rnd, alive in enumerate(bracket_sizes(n)[:-1], start=1):
         m = alive // 2
-        waves = 2 * math.ceil(2 * m / wave) + math.ceil(m / wave)
+        waves = math.ceil(m / wave) if mode == "select" else 2 * math.ceil(2 * m / wave) + math.ceil(m / wave)
         rows.append({"round": rnd, "alive": alive, "matches": m, "bye": alive % 2,
-                     "calls": CALLS_PER_MATCH * m, "waves": waves})
+                     "calls": (1 if mode == "select" else CALLS_PER_MATCH) * m, "waves": waves})
     return rows
 
 
-def plan_totals(n, wave=DEFAULT_WAVE):
-    rows = plan_rows(n, wave)
+def plan_totals(n, wave=DEFAULT_WAVE, mode=DEFAULT_MODE):
+    rows = plan_rows(n, wave, mode)
     calls = n + sum(r["calls"] for r in rows)
     waves = math.ceil(n / wave) + sum(r["waves"] for r in rows)
-    return {"agents": n, "rounds": len(rows), "calls": calls, "waves": waves, "rows": rows}
+    return {"agents": n, "mode": mode, "rounds": len(rows), "calls": calls, "waves": waves, "rows": rows}
+
+
+def solution_hashes(state):
+    hashes = {}
+    for aid in sorted(state["agents"]):
+        path = state["agents"][aid]["solution"]
+        if path != spawn_out(state["dir"], aid) or not _has_output(path):
+            raise ArenaError("selection needs the original completed answer for %s" % aid)
+        with open(path, "rb") as fh:
+            hashes[aid] = hashlib.sha256(fh.read()).hexdigest()
+    return hashes
+
+
+def freeze_solutions(state):
+    if state.get("mode", "evolve") != "select":
+        return
+    if state.get("frozen_solutions"):
+        verify_frozen_solutions(state, required=True)
+    else:
+        state["frozen_solutions"] = solution_hashes(state)
+        save_state(state)
+
+
+def verify_frozen_solutions(state, required=False):
+    if state.get("mode", "evolve") != "select":
+        return
+    frozen = state.get("frozen_solutions")
+    if not frozen:
+        if required:
+            raise ArenaError("selection answers are not frozen; generate judge prompts after all drafts finish")
+        return
+    if solution_hashes(state) != frozen:
+        raise ArenaError("a frozen selection answer changed; restore the original bytes before continuing")
 
 
 # ---------------------------------------------------------------- state io
@@ -870,11 +927,11 @@ def cmd_plan(args):
     n = _agents_arg(args)
     if n < 1:
         raise ArenaError("--agents must be at least 1")
-    t = plan_totals(n, args.wave)
+    t = plan_totals(n, args.wave, args.mode)
     if args.json:
         print(json.dumps(t, indent=1))
         return 0
-    print("%d agents, %d rounds, waves of %d" % (n, t["rounds"], args.wave))
+    print("%d competitors, %s mode, %d rounds, waves of %d" % (n, args.mode, t["rounds"], args.wave))
     print("")
     print("  round  alive  matches  bye  sub-agent calls  waves")
     print("  spawn  %5d  %7s  %3s  %15d  %5d" % (n, "-", "-", n, math.ceil(n / args.wave)))
@@ -925,13 +982,13 @@ def cmd_init(args):
     with open(RUBRIC_PATH, encoding="utf-8") as src, \
             open(os.path.join(d, "rubric.md"), "w", encoding="utf-8") as dst:
         dst.write(src.read())
-    state = new_state(n, seed, data, d, wave=args.wave, has_baseline=bool(baseline))
+    state = new_state(n, seed, data, d, wave=args.wave, has_baseline=bool(baseline), mode=args.mode)
     save_state(state)
     if default_dir:
         os.makedirs(ROOT, exist_ok=True)
         with open(os.path.join(ROOT, LATEST), "w", encoding="utf-8") as fh:
             fh.write(d + "\n")
-    t = plan_totals(n, args.wave)
+    t = plan_totals(n, args.wave, args.mode)
     print("arena ready: %s" % d)
     print("seed %s. %d agents, %d distinct cards dealt from %d, no repeats."
           % (seed, n, n, combo_count(data)))
@@ -1095,7 +1152,7 @@ def cmd_status(args):
     rows = status_rows(state)
     alive = alive_ids(state)
     if args.json:
-        print(json.dumps({"dir": state["dir"], "seed": state["seed"], "agents": state["agents_n"],
+        print(json.dumps({"dir": state["dir"], "seed": state["seed"], "mode": state.get("mode", "evolve"), "agents": state["agents_n"],
                           "alive": len(alive), "eliminated": state["agents_n"] - len(alive),
                           "champion": state["champion"], "rounds": rows}, indent=1))
         return 0
@@ -1113,6 +1170,7 @@ def cmd_status(args):
 
 
 def winner_report(state):
+    verify_frozen_solutions(state)
     champ = state["champion"]
     if not champ:
         return None
@@ -1190,6 +1248,7 @@ def build_parser():
     sub.required = True
 
     s = sub.add_parser("plan", help="rounds, sub-agent calls and waves for N agents")
+    s.add_argument("--mode", choices=MODES, default=DEFAULT_MODE)
     s.add_argument("--agents", type=int)
     s.add_argument("--quick", action="store_true")
     s.add_argument("--wave", type=int, default=DEFAULT_WAVE)
@@ -1197,6 +1256,7 @@ def build_parser():
     s.set_defaults(func=cmd_plan)
 
     s = sub.add_parser("init", parents=[common], help="deal the cards and write arena.json")
+    s.add_argument("--mode", choices=MODES, default=DEFAULT_MODE)
     s.add_argument("--agents", type=int, help="number of competitors (default %d)" % DEFAULT_AGENTS)
     s.add_argument("--quick", action="store_true", help="%d competitors" % QUICK_AGENTS)
     s.add_argument("--seed", type=int, help="fixes the cards and the pairings (default: random, recorded)")

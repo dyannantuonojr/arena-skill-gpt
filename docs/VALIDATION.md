@@ -1,27 +1,21 @@
-# Validation record
+# Validation record: fixed-answer default (v2)
 
 Validated on 2026-10-24 before publication.
 
-- Full standard-library suite: 38 tests passed, including the complete 16-competitor
-  synthetic pipeline and optional blind final comparison.
-- Twelve GPT-specific regressions passed independently in a separate review context.
-- Skill creator frontmatter validation: passed.
-- Diff whitespace check: passed.
-- Behavioral compatibility probe: original Claude-only instructions failed;
-  ported skill correctly sizes 16 competitors, bounds native workers, and stops
-  when required capabilities or retry budgets are unavailable.
-- Independent code review findings were reproduced, regression-tested and fixed:
-  wrong run/interpreter in suggested commands, incomplete or invalid judge scores,
-  malformed standing-attack lists, failure placeholders, and undefined zero attacks.
-- Archify workflow: automated validation, delivery, strict provenance, and real-browser
-  checks are recorded alongside the diagram. No perceptual review claimed.
+- Full standard-library suite: 43 tests passed. This includes a real-CLI synthetic
+  16-answer selection tournament with exactly 31 jobs, four fixed-branch rounds,
+  and unchanged original answer paths, plus the explicit legacy evolving pipeline.
+- The selection tests reject changed answers during judging and at final delivery.
+- Independent review reproduced the final-delivery hash gap; its regression failed
+  before the fix and passed afterward. All five selection tests passed independently,
+  including an additional singleton CLI smoke check.
+- Legacy states without a mode remain evolving runs. The explicit evolving plan
+  remains 91 jobs; the default selection plan is 31. Optional baseline adds one.
+- Skill creator frontmatter validation and diff whitespace checks passed.
+- Cross-platform CI runs Windows/Linux with Python 3.8/3.12.
 
-The synthetic pipeline does not invoke language models. A complete 91-job live
-model tournament has not been run as part of publishing this fork. Native worker
-scheduling and retry limits are skill instructions interpreted by the host, not
-an autonomous Python model runner or an OS security sandbox. Cross-platform CI
-status is available in the repository Actions tab.
-
-Local Python: 3.12.14 on Windows.
-
-Archify source links pin implementation commit `08b702ac5993543dfef190a16b20f759934f41ec`; final artifact and candidate hashes were rechecked against the passing summary receipt.
+These tests establish engine contracts and bookkeeping, not general model answer
+accuracy. Native worker scheduling and retry limits remain instructions interpreted
+by the host, not an autonomous Python model runner or an OS sandbox. A selected
+answer may still be wrong. Archify automation verifies diagram artifact properties;
+it does not prove the diagram's semantic truth. Diagram receipts accompany its HTML.

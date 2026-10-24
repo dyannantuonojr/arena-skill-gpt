@@ -1,8 +1,12 @@
 # Arena 16 for GPT and Codex
 
-A GPT/Codex port of [Jake Schincariol's Arena](https://github.com/Jakeschincariol/arena-skill), with **16 competitors by default**, four rounds, and one surviving solution. This is an independent MIT-licensed fork, not an official OpenAI product.
+A GPT/Codex port of [Jake Schincariol's Arena](https://github.com/Jakeschincariol/arena-skill), with **16 fixed answers, four rounds, and 31 agent jobs by default**. This is an independent MIT-licensed fork, not an official OpenAI product.
 
-Each competitor gets the same task and a distinct strategy card. Paired competitors critique each other's answers, revise their own, and receive an independent rubric-based judgment. The Python engine validates scores and decides who advances. An optional blind comparison checks whether the champion actually improves on an answer you previously rejected.
+Each competitor gets the same task and a distinct strategy card. The 16 submitted answers are frozen, then independent judges compare pairs. Winners advance unchanged through fixed branches. The Python engine validates scores and decides who advances. An optional blind comparison checks the selected answer against a previous answer.
+
+**The count is explicit:** 16 initial answer jobs + 15 judge jobs = 31 total. It is not 16 total jobs or 16 simultaneous agents.
+
+The original critique-and-revision process remains available with explicit `--mode evolve`: 91 jobs for 16 competitors. Existing saved runs without a mode keep their original evolving behavior.
 
 ## Requirements and compatibility
 
@@ -55,7 +59,9 @@ In ChatGPT hosts that expose installed skills, select Arena with `@`. In Codex u
 
 | Option | Behavior |
 | --- | --- |
-| no flags | 16 competitors, four rounds, 91 jobs |
+| no flags | 16 fixed answers, four rounds, 31 jobs |
+| `--mode select` | Default: judge pairs and advance unchanged answers |
+| `--mode evolve` | Original critique/revision process: 91 jobs |
 | `--agents N` | 1-16 competitors; larger values are rejected |
 | `--quick` | Alias for 16, retained from upstream |
 | `--seed S` | Reproducible cards and pairings, not reproducible model answers |
@@ -65,14 +71,14 @@ Sixteen competitors are not sixteen simultaneous workers. The coordinator reserv
 
 ## Cost and records
 
-A full run is **16 initial drafts + 15 matches x five jobs = 91 jobs**, or **92** with a baseline. Four competitors take 19 jobs; eight take 43. Retries add usage. Plan without invoking models:
+A default run is **16 initial drafts + 15 judgments = 31 jobs**, or **32** with a baseline. Four fixed answers take seven jobs; eight take 15. Explicit evolving mode takes **91**, or **92** with a baseline. Retries and extra artifact-generation jobs add usage. Plan without invoking models:
 
 ```bash
 python skills/arena/bracket.py plan --json
 python skills/arena/bracket.py plan --agents 4 --wave 2
 ```
 
-The run records the task, rubric, cards, prompts, solutions, attacks, defenses, and judgments under `.arena/<run>/`. After interruption:
+The run records the task, rubric, cards, prompts, original answers, answer hashes, and judgments under `.arena/<run>/`. Evolving runs also record attacks and defenses. Selection verifies hashes after judging begins, preserves original answer paths and pairs neighboring branch winners without reseeding. Altered or missing answers stop the run. After interruption:
 
 ```bash
 python skills/arena/bracket.py status --dir "/absolute/path/to/run"
@@ -91,11 +97,11 @@ Run the full standard-library suite:
 python -m unittest discover -s tests -v
 ```
 
-Tests exercise the real CLI, complete 16-agent phase transitions with synthetic outputs, deterministic strategy diversity, rejection of invalid scores and match identities, resumability, and odd-sized brackets. Synthetic pipeline tests establish bookkeeping behavior, not model answer quality or universal host compatibility. CI runs on Windows and Linux with Python 3.8 and 3.12.
+Tests exercise the real CLI, complete 16-entry selection and explicit evolving runs with synthetic outputs, frozen-answer integrity, fixed branches, deterministic strategy diversity, rejection of invalid scores and match identities, resumability, and odd-sized brackets. Synthetic pipeline tests establish bookkeeping behavior, not model answer quality or universal host compatibility. CI runs on Windows and Linux with Python 3.8 and 3.12.
 
 [Interactive Archify workflow](docs/architecture/arena16/arena16.html) and its source candidate and automated validation receipts are in `docs/architecture/arena16/`. Download the HTML to explore it locally; GitHub's file view does not execute HTML.
 
-The original strategy dealer remains intact. This fork changes runtime instructions, caps CLI competitors at 16, defaults to one worker per wave, and strengthens judge validation. The strongest answer in one tournament can still be wrong, and the baseline can win.
+The original strategy dealer remains intact. This fork defaults to fixed-answer selection, changes runtime instructions, caps CLI competitors at 16, defaults to one worker per wave, and strengthens judge validation. Read [the mode change](docs/superpowers/specs/2026-10-24-fixed-selection.md) for the exact behavior. The strongest answer in one tournament can still be wrong, and the baseline can win.
 
 ## Attribution
 
