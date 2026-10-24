@@ -1,0 +1,202 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Proposed personal Arena plugin workflow",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": "docs/superpowers/specs/personal-arena-plugin/workflow.html"
+  },
+  "lanes": [
+    {
+      "id": "owner",
+      "label": "Owner in ChatGPT / Codex"
+    },
+    {
+      "id": "planning",
+      "label": "Proposed private MCP connection"
+    },
+    {
+      "id": "host",
+      "label": "Always-on computer"
+    }
+  ],
+  "mainPath": [
+    "question",
+    "plan",
+    "review",
+    "approve",
+    "authorize",
+    "run",
+    "packages",
+    "view"
+  ],
+  "nodes": [
+    {
+      "id": "question",
+      "lane": "owner",
+      "col": 0,
+      "type": "frontend",
+      "label": "Ask Arena",
+      "sublabel": "question + optional rubric",
+      "tag": "PROPOSED"
+    },
+    {
+      "id": "plan",
+      "lane": "planning",
+      "col": 1,
+      "type": "backend",
+      "label": "Prepare plan",
+      "sublabel": "SKILL.md + Archify",
+      "tag": "NO WORKERS"
+    },
+    {
+      "id": "review",
+      "lane": "owner",
+      "col": 2,
+      "type": "frontend",
+      "label": "Review plan",
+      "sublabel": "read diagram + job count",
+      "tag": "PROPOSED"
+    },
+    {
+      "id": "approve",
+      "lane": "owner",
+      "col": 3,
+      "type": "security",
+      "label": "Approve run",
+      "sublabel": "exact question + guidance",
+      "tag": "OWNER ACTION"
+    },
+    {
+      "id": "authorize",
+      "lane": "planning",
+      "col": 3,
+      "type": "security",
+      "label": "Check owner",
+      "sublabel": "identity + plan digest",
+      "tag": "FAIL CLOSED"
+    },
+    {
+      "id": "blocked",
+      "lane": "planning",
+      "col": 2,
+      "type": "security",
+      "label": "Do not start",
+      "sublabel": "unauthorized or changed",
+      "tag": "PROPOSED"
+    },
+    {
+      "id": "run",
+      "lane": "host",
+      "col": 4,
+      "type": "backend",
+      "label": "Run Arena",
+      "sublabel": "16 drafts + 15 judges",
+      "tag": "SIGNED-IN CODEX"
+    },
+    {
+      "id": "packages",
+      "lane": "host",
+      "col": 5,
+      "type": "backend",
+      "label": "Build guides",
+      "sublabel": "2 finalists + native checks",
+      "tag": "TRUSTED ARCHIFY"
+    },
+    {
+      "id": "view",
+      "lane": "owner",
+      "col": 5,
+      "type": "frontend",
+      "label": "Explore results",
+      "sublabel": "tree + every answer",
+      "tag": "PROPOSED"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_0",
+      "from": "question",
+      "to": "plan",
+      "label": "prepare",
+      "variant": "default"
+    },
+    {
+      "id": "edge_1",
+      "from": "plan",
+      "to": "review",
+      "label": "preview",
+      "variant": "default"
+    },
+    {
+      "id": "edge_2",
+      "from": "review",
+      "to": "approve",
+      "label": "accept",
+      "variant": "default"
+    },
+    {
+      "id": "edge_3",
+      "from": "approve",
+      "to": "authorize",
+      "label": "approved",
+      "variant": "security"
+    },
+    {
+      "id": "edge_4",
+      "from": "authorize",
+      "to": "blocked",
+      "label": "reject",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "edge_5",
+      "from": "authorize",
+      "to": "run",
+      "label": "verified",
+      "variant": "security"
+    },
+    {
+      "id": "edge_6",
+      "from": "run",
+      "to": "packages",
+      "label": "finalists",
+      "variant": "default"
+    },
+    {
+      "id": "edge_7",
+      "from": "packages",
+      "to": "view",
+      "label": "validated",
+      "variant": "default"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Design status",
+      "items": [
+        "All connections shown are proposed; no remote service is deployed.",
+        "Planning and rendering do not start tournament workers."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Private connection",
+      "items": [
+        "Prefer an OpenAI Secure MCP Tunnel after verifying access.",
+        "Enforce owner-only identity; no automatic public fallback."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Read and control",
+      "items": [
+        "Start returns a run ID; progress reads do not restart workers.",
+        "Stop cancels the owned run. Original answers remain fixed."
+      ]
+    }
+  ]
+}
