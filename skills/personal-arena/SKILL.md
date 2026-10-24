@@ -1,6 +1,6 @@
 ---
 name: personal-arena
-description: Open or run the connected personal Arena or five-job Grudge Match interface with optional grading guidance, inspect results and Archify packages, or stop a specific run.
+description: Open or run the connected personal Arena or six-job Grudge Match interface with optional grading guidance, inspect results and Archify packages, or stop a specific run.
 ---
 
 Use the connected Arena MCP tools. `open_arena` opens the tree and question form
@@ -35,8 +35,9 @@ Connection/access changes require the owner's explicit authorization.
 
 The same UI has an Arena / Grudge Match toggle above the question. Switching
 modes starts no workers. To open directly in Grudge Match, use `open_grudge_match`. Preserve the
-visible question above optional rubric guidance. It is a separate five-job
+visible question above optional rubric guidance. It is a separate six-job
 workflow: normal original answer, independent peer review, synthesis, independent
+evidence check covering original/review/synthesis with source citations, independent
 judge comparing original and synthesis under the same rubric, and Archify only
 for the winner. Either answer can win. Do not invoke the 16-answer Arena workflow
 for a Grudge Match request. See `docs/GRUDGE_MATCH.md` for output IDs and details.

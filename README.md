@@ -18,11 +18,14 @@ grading guidance, and click
 1. A normal original answer.
 2. An independent peer review of that answer.
 3. A standalone synthesis incorporating supported review findings.
-4. An independent judge compares anonymously labelled copies of the original
+4. An evidence checker audits claims and citations in the **original, peer review,
+   and synthesis**, producing a readable source-linked report.
+5. An independent judge compares anonymously labelled copies of the original
    and synthesis under the identical frozen rubric.
-5. **Only the winner** receives an implementation guide and native Archify diagram.
+6. **Only the winner** receives an implementation guide and native Archify diagram.
 
-**Five worker jobs before retries.** Either original or synthesis can win.
+**Six worker jobs before retries.** Original and synthesized answers cite material
+factual claims. Unverified claims remain labelled. Either original or synthesis can win.
 Each output is readable from the workflow tree. The comparison shows criterion
 scores and weighted totals; these are rubric scores, not measured accuracy
 percentages. Opening the UI starts no workers. Grudge Match and Arena share the

@@ -90,7 +90,7 @@ def create_server(service, owner_policy=None, grudge_service=None):
 
         @server.tool(annotations=write)
         async def start_grudge_match(question: str, request_id: str, guidance: str = '') -> dict:
-            """Start Grudge Match only on explicit request: original answer, independent peer review, synthesis, independent judge, then Archify for the winner only. Five jobs before retries, using the owner's Codex account. Reuse request_id for identical retries."""
+            """Start Grudge Match only on explicit request: original answer, independent peer review, synthesis, evidence checking of original/review/synthesis, independent judge, then Archify for the winner only. Six jobs before retries, using the owner's Codex account. Reuse request_id for identical retries."""
             return await invoke(start_workflow, grudge_service, service, question, guidance, request_id)
 
         @server.tool(annotations=read)
@@ -100,7 +100,7 @@ def create_server(service, owner_policy=None, grudge_service=None):
 
         @server.tool(annotations=read)
         async def get_grudge_answer(run_id: str, answer_id: str) -> dict:
-            """Read original (a001), peer review (review), synthesis (a002), or judgment (judgment), with verified output hash."""
+            """Read original (a001), peer review (review), synthesis (a002), evidence report (evidence), or judgment (judgment), with verified output hash."""
             return await invoke(grudge_service.get_answer, run_id, answer_id)
 
         @server.tool(annotations=read)

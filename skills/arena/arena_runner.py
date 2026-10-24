@@ -69,6 +69,8 @@ def codex_prefix(executable, node=None):
 
 
 class ArenaRunner:
+    planned_jobs = None
+
     def __init__(self, data_root, codex=None, node=None, repo_root=None):
         self.data_root = Path(data_root).resolve()
         self.data_root.mkdir(parents=True, exist_ok=True)
@@ -266,7 +268,7 @@ class ArenaRunner:
             self._export_fingerprint = None
             self._update(status='running', id=run_id, run_dir=str(run),
                          phase='initializing', completed=0,
-                         total=B.plan_totals(agents, wave, 'select')['calls'],
+                         total=self.planned_jobs or B.plan_totals(agents, wave, 'select')['calls'],
                          active=[], error=None, logs=[], agents=agents, wave=wave,
                          viewer_ready=False,
                          viewer_url='/runs/' + run_id + '/viewer/index.html')
