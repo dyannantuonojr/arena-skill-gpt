@@ -238,7 +238,7 @@ class ArenaRunner:
                          logs=saved.get('logs', [])[-40:])
             return self.status()
 
-    def start(self, task, rubric='', agents=16, wave=3):
+    def start(self, task, rubric='', agents=16, wave=3, run_id=None):
         if not isinstance(task, str) or not task.strip():
             raise ValueError('Enter a question or task before starting Arena.')
         if not isinstance(rubric, str):
@@ -250,7 +250,10 @@ class ArenaRunner:
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
                 raise ValueError('An Arena run is already active. Stop it before starting another.')
-            run_id = time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:10]
+            if run_id is not None and (not isinstance(run_id, str) or not run_id
+                    or len(run_id) > 100 or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' for c in run_id)):
+                raise ValueError('Invalid reserved run ID')
+            run_id = run_id or (time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:10])
             run = self.data_root / run_id
             run.mkdir()  # Never reuse or overwrite an existing run.
             self._stop = threading.Event()
