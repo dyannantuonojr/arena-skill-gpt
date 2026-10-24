@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "workflow",
+  "quality": "showcase",
+  "specification": {
+    "path": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\arena-skill\\docs\\architecture\\arena16\\candidate.json",
+    "sha256": "ca1894a3840ad4b7566f7c5b5a9afb8c3717b2b146d2c836c532b503af46c43d",
+    "bytes": 10406
+  },
+  "artifact": {
+    "path": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\arena-skill\\docs\\architecture\\arena16\\arena16.html",
+    "sha256": "ff75a35eecb23e80958c72eef20896ceec199c7cdc0a0801fa7bdf76a8d8b508",
+    "bytes": 836572
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\arena-skill\\docs\\architecture\\arena16\\review-2\\arena16.finalize.json",
+    "summaryReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\arena-skill\\docs\\architecture\\arena16\\review-2\\arena16.finalize-summary.json",
+    "browserCheckReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\arena-skill\\docs\\architecture\\arena16\\review-2\\arena16.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-24T13:11:38.399Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 9947,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

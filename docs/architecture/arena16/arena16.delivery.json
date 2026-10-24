@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "8871e816-a1a6-4546-b5e2-364a9fa7773a",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\arena-skill\\docs\\architecture\\arena16\\candidate.json",
+  "output": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\arena-skill\\docs\\architecture\\arena16\\arena16.html",
+  "specification": {
+    "sha256": "ca1894a3840ad4b7566f7c5b5a9afb8c3717b2b146d2c836c532b503af46c43d",
+    "bytes": 10406
+  },
+  "artifact": {
+    "sha256": "ff75a35eecb23e80958c72eef20896ceec199c7cdc0a0801fa7bdf76a8d8b508",
+    "bytes": 836572
+  }
+}

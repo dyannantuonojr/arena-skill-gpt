@@ -1,0 +1,402 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Arena 16 for GPT: bounded workers and resumable judging",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": "docs/architecture/arena16/arena16.html",
+    "repository": {
+      "url": "https://github.com/dyannantuonojr/arena-skill-gpt",
+      "revision": "08b702ac5993543dfef190a16b20f759934f41ec"
+    }
+  },
+  "lanes": [
+    {
+      "id": "setup",
+      "label": "Freeze and spawn"
+    },
+    {
+      "id": "match",
+      "label": "Every match"
+    },
+    {
+      "id": "control",
+      "label": "State and recovery"
+    },
+    {
+      "id": "result",
+      "label": "Result"
+    }
+  ],
+  "mainPath": [
+    "freeze",
+    "init",
+    "spawn",
+    "attack",
+    "defend",
+    "judge",
+    "collect",
+    "advance",
+    "winner"
+  ],
+  "nodes": [
+    {
+      "id": "freeze",
+      "lane": "setup",
+      "col": 0,
+      "type": "external",
+      "label": "Freeze task",
+      "sublabel": "All constraints + context",
+      "sources": [
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 38,
+          "end_line": 59
+        }
+      ]
+    },
+    {
+      "id": "init",
+      "lane": "setup",
+      "col": 1,
+      "type": "database",
+      "label": "Initialize .arena",
+      "sublabel": "Task, rubric, seed, state",
+      "sources": [
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 891,
+          "end_line": 933
+        },
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 67,
+          "end_line": 71
+        }
+      ]
+    },
+    {
+      "id": "spawn",
+      "lane": "setup",
+      "col": 2,
+      "type": "messagebus",
+      "label": "16 competitors",
+      "sublabel": "Distinct strategy triples",
+      "tag": "same task, different cards",
+      "sources": [
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 169,
+          "end_line": 219
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 621,
+          "end_line": 624
+        },
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 130,
+          "end_line": 160
+        }
+      ]
+    },
+    {
+      "id": "attack",
+      "lane": "match",
+      "col": 2,
+      "type": "backend",
+      "label": "Attack",
+      "sublabel": "Two jobs per match",
+      "sources": [
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 637,
+          "end_line": 642
+        },
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 190,
+          "end_line": 192
+        }
+      ]
+    },
+    {
+      "id": "defend",
+      "lane": "match",
+      "col": 3,
+      "type": "backend",
+      "label": "Defend + revise",
+      "sublabel": "Two jobs per match",
+      "sources": [
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 643,
+          "end_line": 647
+        },
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 227,
+          "end_line": 240
+        }
+      ]
+    },
+    {
+      "id": "judge",
+      "lane": "match",
+      "col": 4,
+      "type": "security",
+      "label": "Independent judge",
+      "sublabel": "One rubric verdict per match",
+      "sources": [
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 648,
+          "end_line": 651
+        },
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 247,
+          "end_line": 294
+        }
+      ]
+    },
+    {
+      "id": "collect",
+      "lane": "match",
+      "col": 5,
+      "type": "backend",
+      "label": "Collect verdicts",
+      "sublabel": "Validate, record, save",
+      "sources": [
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 544,
+          "end_line": 605
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 1043,
+          "end_line": 1063
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 266,
+          "end_line": 271
+        }
+      ]
+    },
+    {
+      "id": "retry",
+      "lane": "control",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Retry judge",
+      "sublabel": "Fresh context; max 3 total",
+      "sources": [
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 93,
+          "end_line": 100
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 544,
+          "end_line": 565
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 581,
+          "end_line": 596
+        }
+      ]
+    },
+    {
+      "id": "advance",
+      "lane": "control",
+      "col": 5,
+      "type": "backend",
+      "label": "Advance round",
+      "sublabel": "16 > 8 > 4 > 2 > 1",
+      "tag": "all matches recorded first",
+      "sources": [
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 410,
+          "end_line": 436
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 1066,
+          "end_line": 1080
+        }
+      ]
+    },
+    {
+      "id": "final",
+      "lane": "result",
+      "col": 4,
+      "type": "security",
+      "label": "Blind final + collect",
+      "sublabel": "Only if baseline exists",
+      "sources": [
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 298,
+          "end_line": 335
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 550,
+          "end_line": 574
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 778,
+          "end_line": 784
+        }
+      ]
+    },
+    {
+      "id": "winner",
+      "lane": "result",
+      "col": 5,
+      "type": "frontend",
+      "label": "Deliver winner",
+      "sublabel": "Solution + survival record",
+      "tag": "project edits await user",
+      "sources": [
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 112,
+          "end_line": 121
+        },
+        {
+          "path": "skills/arena/bracket.py",
+          "line": 1115,
+          "end_line": 1136
+        }
+      ]
+    },
+    {
+      "id": "stopped",
+      "lane": "control",
+      "col": 3,
+      "type": "security",
+      "label": "Stop incomplete",
+      "sublabel": "Save failed job + run path",
+      "tag": "status + next can resume",
+      "sources": [
+        {
+          "path": "skills/arena/SKILL.md",
+          "line": 93,
+          "end_line": 110
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "freeze",
+      "to": "init"
+    },
+    {
+      "from": "init",
+      "to": "spawn"
+    },
+    {
+      "from": "spawn",
+      "to": "attack"
+    },
+    {
+      "from": "attack",
+      "to": "defend"
+    },
+    {
+      "from": "defend",
+      "to": "judge"
+    },
+    {
+      "from": "judge",
+      "to": "collect"
+    },
+    {
+      "from": "collect",
+      "to": "advance",
+      "label": "valid"
+    },
+    {
+      "from": "collect",
+      "to": "retry",
+      "label": "malformed",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "from": "retry",
+      "to": "judge",
+      "role": "return",
+      "variant": "dashed"
+    },
+    {
+      "from": "advance",
+      "to": "attack",
+      "label": "rounds 1-3",
+      "role": "return"
+    },
+    {
+      "from": "advance",
+      "to": "final",
+      "label": "baseline",
+      "role": "branch"
+    },
+    {
+      "from": "advance",
+      "to": "winner",
+      "label": "no baseline"
+    },
+    {
+      "from": "final",
+      "to": "winner",
+      "label": "valid verdict"
+    },
+    {
+      "from": "retry",
+      "to": "stopped",
+      "label": "limit reached",
+      "role": "error",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "GPT/Codex execution contract",
+      "items": [
+        "This diagram maps the implemented GPT/Codex fork at commit 08b702ac. Click a node to inspect its pinned source evidence.",
+        "Use native independent workers with history inheritance disabled. Default wave size is 1; confirmed capacity must subtract the coordinator and other active work. Four total slots permit at most three available workers.",
+        "Wait for actual completion, verify output files, then release completed workers when the runtime requires it. If fresh contexts cannot be provided, stop with the saved run. The coordinator never judges."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Saved state and isolation",
+      "items": [
+        "bracket.py init freezes task and rubric inside .arena/<run>; arena.json is atomically replaced. Keep the absolute RUN path and use --dir RUN for every command.",
+        "One coordinator mutates tournament state. next determines phase and missing jobs; status then next resumes after interruption. Retry counts live in a coordinator-maintained ledger under RUN.",
+        "Worker write restrictions are prompt rules, not an OS sandbox. Competitors propose project changes as text or diffs inside .arena. Applying a winning diff is a separate user decision."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Failure and cost boundaries",
+      "items": [
+        "16 spawn jobs + 15 matches x (2 attack + 2 defend + 1 judge) = 91 jobs; optional baseline adds one. Retries increase cost.",
+        "collect quarantines malformed match or final verdicts as .unreadable. Match verdicts require standing-attack lists. Missing, whitespace-only and NO OUTPUT files are incomplete; a genuine zero-attack output is NO ATTACKS FOUND.",
+        "Ordinary jobs get one retry; match and final judges get at most three total attempts. The coordinator records failures in its retry ledger without resetting rejected-verdict counts. After the bound, stop incomplete with saved state; never fabricate outputs or winners.",
+        "Final baseline judging follows the same bounded retry policy before collect can finish. It can favor the rejected answer; report that as the preferred answer alongside the tournament result."
+      ]
+    }
+  ]
+}

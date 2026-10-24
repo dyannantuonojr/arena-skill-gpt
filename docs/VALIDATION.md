@@ -23,3 +23,5 @@ an autonomous Python model runner or an OS security sandbox. Cross-platform CI
 status is available in the repository Actions tab.
 
 Local Python: 3.12.14 on Windows.
+
+Archify source links pin implementation commit `08b702ac5993543dfef190a16b20f759934f41ec`; final artifact and candidate hashes were rechecked against the passing summary receipt.
