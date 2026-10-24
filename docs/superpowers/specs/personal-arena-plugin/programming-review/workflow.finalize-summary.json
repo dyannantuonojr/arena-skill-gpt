@@ -7,13 +7,13 @@
   "quality": "showcase",
   "specification": {
     "path": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\candidate.json",
-    "sha256": "c875feb07fb1effdf3413064be85a2b2c28a79ca02550ecc7c62733275b38f9c",
-    "bytes": 4533
+    "sha256": "8ec8f174db74bcad5602407f24f4d495cf9b809a52d8a7b0e6002be63436651e",
+    "bytes": 4160
   },
   "artifact": {
     "path": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.html",
-    "sha256": "6513be9ec66e7c64677e3449a2dadd86b109734e7f6e690565cf57a3503170e4",
-    "bytes": 823431
+    "sha256": "080ebd37cea81f195f3f3a818a5d034628b4c707abf4de93f42108464ddc61cf",
+    "bytes": 819654
   },
   "gates": {
     "validate": "pass",
@@ -28,9 +28,9 @@
     "truncated": false
   },
   "evidence": {
-    "receipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.finalize.json",
-    "summaryReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.finalize-summary.json",
-    "browserCheckReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.browser-check.json"
+    "receipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\programming-review\\workflow.finalize.json",
+    "summaryReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\programming-review\\workflow.finalize-summary.json",
+    "browserCheckReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\programming-review\\workflow.browser-check.json"
   },
   "update": {
     "status": "current",
@@ -43,7 +43,7 @@
     "noticeText": null
   },
   "visualReview": "not-requested",
-  "durationMs": 12397,
+  "durationMs": 8198,
   "browserCheck": {
     "requested": true,
     "ran": true

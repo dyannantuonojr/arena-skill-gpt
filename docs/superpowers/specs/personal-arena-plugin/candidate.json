@@ -2,200 +2,171 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Proposed personal Arena plugin workflow",
+    "title": "Arena plugin upgrade: programming plan",
     "locale": "en",
     "quality_profile": "showcase",
     "output": "docs/superpowers/specs/personal-arena-plugin/workflow.html"
   },
   "lanes": [
     {
-      "id": "owner",
-      "label": "Owner in ChatGPT / Codex"
+      "id": "build",
+      "label": "Build the plugin interface"
     },
     {
-      "id": "planning",
-      "label": "Proposed private MCP connection"
-    },
-    {
-      "id": "host",
-      "label": "Always-on computer"
+      "id": "verify",
+      "label": "Verify, package and connect"
     }
   ],
   "mainPath": [
-    "question",
-    "plan",
-    "review",
-    "approve",
-    "authorize",
-    "run",
-    "packages",
-    "view"
+    "service",
+    "tools",
+    "ui",
+    "auth",
+    "tests",
+    "package",
+    "connect"
   ],
   "nodes": [
     {
-      "id": "question",
-      "lane": "owner",
+      "id": "service",
+      "lane": "build",
       "col": 0,
-      "type": "frontend",
-      "label": "Ask Arena",
-      "sublabel": "question + optional rubric",
-      "tag": "PROPOSED"
-    },
-    {
-      "id": "plan",
-      "lane": "planning",
-      "col": 1,
       "type": "backend",
-      "label": "Prepare plan",
-      "sublabel": "SKILL.md + Archify",
-      "tag": "NO WORKERS"
+      "label": "1. Wrap runner",
+      "sublabel": "safe start / read / stop",
+      "tag": "arena_service.py"
     },
     {
-      "id": "review",
-      "lane": "owner",
+      "id": "tools",
+      "lane": "build",
+      "col": 1,
+      "type": "messagebus",
+      "label": "2. Add MCP tools",
+      "sublabel": "SDK + structured results",
+      "tag": "plugin/server.py"
+    },
+    {
+      "id": "ui",
+      "lane": "build",
       "col": 2,
       "type": "frontend",
-      "label": "Review plan",
-      "sublabel": "read diagram + job count",
-      "tag": "PROPOSED"
+      "label": "3. Embed tree UI",
+      "sublabel": "question + answer panels",
+      "tag": "plugin/ui/"
     },
     {
-      "id": "approve",
-      "lane": "owner",
+      "id": "auth",
+      "lane": "build",
       "col": 3,
       "type": "security",
-      "label": "Approve run",
-      "sublabel": "exact question + guidance",
-      "tag": "OWNER ACTION"
+      "label": "4. Owner access",
+      "sublabel": "verified identity only",
+      "tag": "plugin/auth.py"
     },
     {
-      "id": "authorize",
-      "lane": "planning",
+      "id": "tests",
+      "lane": "verify",
       "col": 3,
-      "type": "security",
-      "label": "Check owner",
-      "sublabel": "identity + plan digest",
-      "tag": "FAIL CLOSED"
+      "type": "backend",
+      "label": "5. Test fixtures",
+      "sublabel": "protocol + UI + failures",
+      "tag": "PASS REQUIRED"
     },
     {
-      "id": "blocked",
-      "lane": "planning",
-      "col": 2,
-      "type": "security",
-      "label": "Do not start",
-      "sublabel": "unauthorized or changed",
-      "tag": "PROPOSED"
-    },
-    {
-      "id": "run",
-      "lane": "host",
+      "id": "package",
+      "lane": "verify",
       "col": 4,
       "type": "backend",
-      "label": "Run Arena",
-      "sublabel": "16 drafts + 15 judges",
-      "tag": "SIGNED-IN CODEX"
+      "label": "Package upgrade",
+      "sublabel": "SKILL.md + manifests",
+      "tag": "NO RUN PLANNING"
     },
     {
-      "id": "packages",
-      "lane": "host",
+      "id": "connect",
+      "lane": "verify",
       "col": 5,
-      "type": "backend",
-      "label": "Build guides",
-      "sublabel": "2 finalists + native checks",
-      "tag": "TRUSTED ARCHIFY"
-    },
-    {
-      "id": "view",
-      "lane": "owner",
-      "col": 5,
-      "type": "frontend",
-      "label": "Explore results",
-      "sublabel": "tree + every answer",
-      "tag": "PROPOSED"
+      "type": "security",
+      "label": "6. Connect host",
+      "sublabel": "private MCP + real client",
+      "tag": "OWNER APPROVAL"
     }
   ],
   "edges": [
     {
-      "id": "edge_0",
-      "from": "question",
-      "to": "plan",
-      "label": "prepare",
+      "id": "stage_0",
+      "from": "service",
+      "to": "tools",
+      "label": "service API",
       "variant": "default"
     },
     {
-      "id": "edge_1",
-      "from": "plan",
-      "to": "review",
-      "label": "preview",
+      "id": "stage_1",
+      "from": "tools",
+      "to": "ui",
+      "label": "UI bridge",
       "variant": "default"
     },
     {
-      "id": "edge_2",
-      "from": "review",
-      "to": "approve",
-      "label": "accept",
-      "variant": "default"
-    },
-    {
-      "id": "edge_3",
-      "from": "approve",
-      "to": "authorize",
-      "label": "approved",
+      "id": "stage_2",
+      "from": "ui",
+      "to": "auth",
+      "label": "protect tools",
       "variant": "security"
     },
     {
-      "id": "edge_4",
-      "from": "authorize",
-      "to": "blocked",
-      "label": "reject",
-      "variant": "security",
-      "role": "error"
+      "id": "stage_3",
+      "from": "auth",
+      "to": "tests",
+      "label": "verify",
+      "variant": "default"
     },
     {
-      "id": "edge_5",
-      "from": "authorize",
-      "to": "run",
-      "label": "verified",
+      "id": "stage_4",
+      "from": "tests",
+      "to": "package",
+      "label": "tests pass",
+      "variant": "default"
+    },
+    {
+      "id": "stage_5",
+      "from": "package",
+      "to": "connect",
+      "label": "owner approves",
       "variant": "security"
-    },
-    {
-      "id": "edge_6",
-      "from": "run",
-      "to": "packages",
-      "label": "finalists",
-      "variant": "default"
-    },
-    {
-      "id": "edge_7",
-      "from": "packages",
-      "to": "view",
-      "label": "validated",
-      "variant": "default"
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Design status",
+      "title": "What this diagram means",
       "items": [
-        "All connections shown are proposed; no remote service is deployed.",
-        "Planning and rendering do not start tournament workers."
+        "Proposed development tasks for upgrading Arena to a personal plugin.",
+        "This is not a workflow imposed on users before each Arena run."
       ]
     },
     {
-      "dot": "amber",
-      "title": "Private connection",
+      "dot": "violet",
+      "title": "Reuse the working core",
       "items": [
-        "Prefer an OpenAI Secure MCP Tunnel after verifying access.",
-        "Enforce owner-only identity; no automatic public fallback."
+        "Keep fixed 16 answers, 15 judges and two finalist packages.",
+        "Preserve the native Archify vendor bundle and original credits."
       ]
     },
     {
       "dot": "emerald",
-      "title": "Read and control",
+      "title": "Interface acceptance",
       "items": [
-        "Start returns a run ID; progress reads do not restart workers.",
-        "Stop cancels the owned run. Original answers remain fixed."
+        "Enter the question and optional guidance directly in the plugin.",
+        "Click every answer in the tree; keep zoom, scroll and finalist tabs."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Connection acceptance",
+      "items": [
+        "Test duplicate-start protection, scoped Stop and rejected non-owner access.",
+        "Verify private tunnel availability and native rendering in ChatGPT.",
+        "Do not start a real tournament or enable remote access during planning."
       ]
     }
   ]

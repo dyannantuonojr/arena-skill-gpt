@@ -5,16 +5,16 @@
   "status": "pass",
   "type": "workflow",
   "quality": "showcase",
-  "startedAt": "2026-10-24T18:29:32.641Z",
+  "startedAt": "2026-10-24T18:36:57.019Z",
   "specification": {
     "path": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\candidate.json",
-    "sha256": "c875feb07fb1effdf3413064be85a2b2c28a79ca02550ecc7c62733275b38f9c",
-    "bytes": 4533
+    "sha256": "8ec8f174db74bcad5602407f24f4d495cf9b809a52d8a7b0e6002be63436651e",
+    "bytes": 4160
   },
   "artifact": {
     "path": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.html",
-    "sha256": "6513be9ec66e7c64677e3449a2dadd86b109734e7f6e690565cf57a3503170e4",
-    "bytes": 823431
+    "sha256": "080ebd37cea81f195f3f3a818a5d034628b4c707abf4de93f42108464ddc61cf",
+    "bytes": 819654
   },
   "stages": {
     "validate": {
@@ -38,8 +38,8 @@
         "ok": true,
         "command": "validate",
         "specification": {
-          "sha256": "c875feb07fb1effdf3413064be85a2b2c28a79ca02550ecc7c62733275b38f9c",
-          "bytes": 4533
+          "sha256": "8ec8f174db74bcad5602407f24f4d495cf9b809a52d8a7b0e6002be63436651e",
+          "bytes": 4160
         },
         "validation": {
           "checksPassed": 9,
@@ -54,7 +54,7 @@
     "deliver": {
       "status": "pass",
       "exitCode": 0,
-      "durationMs": 3253,
+      "durationMs": 1682,
       "command": [
         "C:\\Users\\dyann\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe",
         "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\skills\\arena\\vendor\\archify\\bin\\archify.mjs",
@@ -68,19 +68,19 @@
       ],
       "receipt": {
         "schemaVersion": 1,
-        "receiptId": "529ef45d-b58e-4b4c-a420-c52154fb2de6",
+        "receiptId": "cadd41ad-2ed7-4423-badf-5382f257d8a1",
         "ok": true,
         "command": "deliver",
         "type": "workflow",
         "input": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\candidate.json",
         "output": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.html",
         "specification": {
-          "sha256": "c875feb07fb1effdf3413064be85a2b2c28a79ca02550ecc7c62733275b38f9c",
-          "bytes": 4533
+          "sha256": "8ec8f174db74bcad5602407f24f4d495cf9b809a52d8a7b0e6002be63436651e",
+          "bytes": 4160
         },
         "artifact": {
-          "sha256": "6513be9ec66e7c64677e3449a2dadd86b109734e7f6e690565cf57a3503170e4",
-          "bytes": 823431
+          "sha256": "080ebd37cea81f195f3f3a818a5d034628b4c707abf4de93f42108464ddc61cf",
+          "bytes": 819654
         },
         "validation": {
           "checksPassed": 9,
@@ -106,7 +106,7 @@
     "check": {
       "status": "pass",
       "exitCode": 0,
-      "durationMs": 670,
+      "durationMs": 402,
       "command": [
         "C:\\Users\\dyann\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe",
         "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\skills\\arena\\vendor\\archify\\bin\\archify.mjs",
@@ -118,8 +118,8 @@
         "ok": true,
         "file": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.html",
         "artifact": {
-          "sha256": "6513be9ec66e7c64677e3449a2dadd86b109734e7f6e690565cf57a3503170e4",
-          "bytes": 823431
+          "sha256": "080ebd37cea81f195f3f3a818a5d034628b4c707abf4de93f42108464ddc61cf",
+          "bytes": 819654
         },
         "checks": [
           {
@@ -186,7 +186,7 @@
             "containerBorderRuns": 0,
             "labelRouteClearanceIssues": 0,
             "labelCanvasOverflowIssues": 0,
-            "minLabelRouteClearance": 62.9,
+            "minLabelRouteClearance": 61.6,
             "desktopReadabilityIssues": 0,
             "viewportHeightIssues": 0,
             "minProjectedNodeTextPx": 6,
@@ -194,10 +194,10 @@
             "routesOverSuggestedBends": 0,
             "maxStretch": 1,
             "routesOverSuggestedStretch": 0,
-            "minSegmentPx": 8,
+            "minSegmentPx": 58,
             "minInteriorSegmentPx": null,
-            "shortSegmentCount": 2,
-            "shortEndpointSegmentCount": 2,
+            "shortSegmentCount": 0,
+            "shortEndpointSegmentCount": 0,
             "shortInteriorSegmentCount": 0,
             "microSegmentCount": 0
           },
@@ -227,29 +227,31 @@
             "hardFloorMet": true,
             "minimumOwner": {
               "kind": "node",
-              "id": "blocked"
+              "id": "tools"
             },
-            "minimumSourceTextPx": 6,
+            "minimumSourceTextPx": 7.2,
             "minimumProjectedTextPx": 6,
-            "semanticTextCount": 26
+            "semanticTextCount": 20
           },
           "issues": []
         },
         "provenance": "current",
-        "deliveryReceiptId": "529ef45d-b58e-4b4c-a420-c52154fb2de6"
+        "deliveryReceiptId": "cadd41ad-2ed7-4423-badf-5382f257d8a1"
       }
     },
     "browser-check": {
       "status": "pass",
       "exitCode": 0,
-      "durationMs": 4642,
+      "durationMs": 3589,
       "command": [
         "C:\\Users\\dyann\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe",
         "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\skills\\arena\\vendor\\archify\\bin\\archify.mjs",
         "browser-check",
         "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.html",
         "--json",
-        "--require-provenance"
+        "--require-provenance",
+        "--out-dir",
+        "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\programming-review"
       ],
       "execution": "in-process",
       "receipt": {
@@ -260,11 +262,11 @@
         "status": "pass",
         "visualReview": "not-requested",
         "provenance": "current",
-        "deliveryReceiptId": "529ef45d-b58e-4b4c-a420-c52154fb2de6",
+        "deliveryReceiptId": "cadd41ad-2ed7-4423-badf-5382f257d8a1",
         "artifact": {
           "path": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.html",
-          "sha256": "6513be9ec66e7c64677e3449a2dadd86b109734e7f6e690565cf57a3503170e4",
-          "bytes": 823431
+          "sha256": "080ebd37cea81f195f3f3a818a5d034628b4c707abf4de93f42108464ddc61cf",
+          "bytes": 819654
         },
         "state": {
           "detail": "read",
@@ -295,66 +297,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1321,
-              "diagramWidth": 1291,
+              "readerWidth": 1376,
+              "diagramWidth": 1346,
               "pageComposition": {
                 "bodyPaddingPx": 12,
                 "headerPx": 52,
                 "diagramChromePx": 78,
-                "svgPx": 746,
+                "svgPx": 492,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 148,
+                  "heightPx": 128,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 82,
+                  "spaceAboveNodesPx": 41,
+                  "spaceBelowNodesPx": 5
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 148,
+                  "heightPx": 128,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 148,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 82,
+                  "spaceAboveNodesPx": 41,
+                  "spaceBelowNodesPx": 5
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -386,66 +376,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1380,
-              "diagramWidth": 1350,
+              "readerWidth": 1536,
+              "diagramWidth": 1506,
               "pageComposition": {
                 "bodyPaddingPx": 64,
                 "headerPx": 60,
                 "diagramChromePx": 84,
-                "svgPx": 780,
+                "svgPx": 551,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 155,
+                  "heightPx": 143,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 92,
+                  "spaceAboveNodesPx": 46,
+                  "spaceBelowNodesPx": 5
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 155,
+                  "heightPx": 143,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 155,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 92,
+                  "spaceAboveNodesPx": 46,
+                  "spaceBelowNodesPx": 5
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -477,66 +455,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1518,
-              "diagramWidth": 1488,
+              "readerWidth": 1856,
+              "diagramWidth": 1826,
               "pageComposition": {
                 "bodyPaddingPx": 64,
                 "headerPx": 60,
                 "diagramChromePx": 84,
-                "svgPx": 860,
+                "svgPx": 668,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 171,
+                  "heightPx": 173,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 111,
+                  "spaceAboveNodesPx": 56,
+                  "spaceBelowNodesPx": 7
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 171,
+                  "heightPx": 173,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 171,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 111,
+                  "spaceAboveNodesPx": 56,
+                  "spaceBelowNodesPx": 7
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -574,60 +540,48 @@
                 "bodyPaddingPx": 64,
                 "headerPx": 68,
                 "diagramChromePx": 94,
-                "svgPx": 1081,
+                "svgPx": 684,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 215,
+                  "heightPx": 178,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
+                  "nodeSpanPx": 114,
+                  "spaceAboveNodesPx": 57,
+                  "spaceBelowNodesPx": 7
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 215,
+                  "heightPx": 178,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 215,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
+                  "nodeSpanPx": 114,
+                  "spaceAboveNodesPx": 57,
+                  "spaceBelowNodesPx": 7
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -712,66 +666,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1321,
-              "diagramWidth": 1291,
+              "readerWidth": 1376,
+              "diagramWidth": 1346,
               "pageComposition": {
                 "bodyPaddingPx": 12,
                 "headerPx": 52,
                 "diagramChromePx": 78,
-                "svgPx": 746,
+                "svgPx": 492,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 148,
+                  "heightPx": 128,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 82,
+                  "spaceAboveNodesPx": 41,
+                  "spaceBelowNodesPx": 5
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 148,
+                  "heightPx": 128,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 148,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 82,
+                  "spaceAboveNodesPx": 41,
+                  "spaceBelowNodesPx": 5
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -803,66 +745,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1380,
-              "diagramWidth": 1350,
+              "readerWidth": 1536,
+              "diagramWidth": 1506,
               "pageComposition": {
                 "bodyPaddingPx": 64,
                 "headerPx": 60,
                 "diagramChromePx": 84,
-                "svgPx": 780,
+                "svgPx": 551,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 155,
+                  "heightPx": 143,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 92,
+                  "spaceAboveNodesPx": 46,
+                  "spaceBelowNodesPx": 5
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 155,
+                  "heightPx": 143,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 155,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 92,
+                  "spaceAboveNodesPx": 46,
+                  "spaceBelowNodesPx": 5
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -894,66 +824,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1518,
-              "diagramWidth": 1488,
+              "readerWidth": 1856,
+              "diagramWidth": 1826,
               "pageComposition": {
                 "bodyPaddingPx": 64,
                 "headerPx": 60,
                 "diagramChromePx": 84,
-                "svgPx": 860,
+                "svgPx": 668,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 171,
+                  "heightPx": 173,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 111,
+                  "spaceAboveNodesPx": 56,
+                  "spaceBelowNodesPx": 7
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 171,
+                  "heightPx": 173,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 171,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 111,
+                  "spaceAboveNodesPx": 56,
+                  "spaceBelowNodesPx": 7
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -991,60 +909,48 @@
                 "bodyPaddingPx": 64,
                 "headerPx": 68,
                 "diagramChromePx": 94,
-                "svgPx": 1081,
+                "svgPx": 684,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 215,
+                  "heightPx": 178,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
+                  "nodeSpanPx": 114,
+                  "spaceAboveNodesPx": 57,
+                  "spaceBelowNodesPx": 7
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 215,
+                  "heightPx": 178,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 215,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
+                  "nodeSpanPx": 114,
+                  "spaceAboveNodesPx": 57,
+                  "spaceBelowNodesPx": 7
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -1081,66 +987,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1321,
-              "diagramWidth": 1291,
+              "readerWidth": 1376,
+              "diagramWidth": 1346,
               "pageComposition": {
                 "bodyPaddingPx": 12,
                 "headerPx": 52,
                 "diagramChromePx": 78,
-                "svgPx": 746,
+                "svgPx": 492,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 148,
+                  "heightPx": 128,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 82,
+                  "spaceAboveNodesPx": 41,
+                  "spaceBelowNodesPx": 5
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 148,
+                  "heightPx": 128,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 148,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 95,
-                  "spaceAboveNodesPx": 48,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 82,
+                  "spaceAboveNodesPx": 41,
+                  "spaceBelowNodesPx": 5
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -1172,66 +1066,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1380,
-              "diagramWidth": 1350,
+              "readerWidth": 1536,
+              "diagramWidth": 1506,
               "pageComposition": {
                 "bodyPaddingPx": 64,
                 "headerPx": 60,
                 "diagramChromePx": 84,
-                "svgPx": 780,
+                "svgPx": 551,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 155,
+                  "heightPx": 143,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 92,
+                  "spaceAboveNodesPx": 46,
+                  "spaceBelowNodesPx": 5
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 155,
+                  "heightPx": 143,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 155,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 99,
-                  "spaceAboveNodesPx": 50,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 92,
+                  "spaceAboveNodesPx": 46,
+                  "spaceBelowNodesPx": 5
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -1263,66 +1145,54 @@
               "readerOverflow": null,
               "readerFit": null,
               "ok": true,
-              "readerWidth": 1518,
-              "diagramWidth": 1488,
+              "readerWidth": 1856,
+              "diagramWidth": 1826,
               "pageComposition": {
                 "bodyPaddingPx": 64,
                 "headerPx": 60,
                 "diagramChromePx": 84,
-                "svgPx": 860,
+                "svgPx": 668,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 171,
+                  "heightPx": 173,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 111,
+                  "spaceAboveNodesPx": 56,
+                  "spaceBelowNodesPx": 7
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 171,
+                  "heightPx": 173,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 171,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 110,
-                  "spaceAboveNodesPx": 55,
-                  "spaceBelowNodesPx": 6
+                  "nodeSpanPx": 111,
+                  "spaceAboveNodesPx": 56,
+                  "spaceBelowNodesPx": 7
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -1360,60 +1230,48 @@
                 "bodyPaddingPx": 64,
                 "headerPx": 68,
                 "diagramChromePx": 94,
-                "svgPx": 1081,
+                "svgPx": 684,
                 "cardsPx": 0,
-                "viewBoxHeight": 534
+                "viewBoxHeight": 408
               },
-              "viewBoxWidth": 924,
+              "viewBoxWidth": 1116,
               "workflowLanes": [
                 {
                   "frameId": "lane-0",
-                  "heightPx": 215,
+                  "heightPx": 178,
                   "nodeCount": 4,
                   "nodeIds": [
-                    "question",
-                    "review",
-                    "approve",
-                    "view"
+                    "service",
+                    "tools",
+                    "ui",
+                    "auth"
                   ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
+                  "nodeSpanPx": 114,
+                  "spaceAboveNodesPx": 57,
+                  "spaceBelowNodesPx": 7
                 },
                 {
                   "frameId": "lane-1",
-                  "heightPx": 215,
+                  "heightPx": 178,
                   "nodeCount": 3,
                   "nodeIds": [
-                    "plan",
-                    "blocked",
-                    "authorize"
+                    "tests",
+                    "package",
+                    "connect"
                   ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
-                },
-                {
-                  "frameId": "lane-2",
-                  "heightPx": 215,
-                  "nodeCount": 2,
-                  "nodeIds": [
-                    "run",
-                    "packages"
-                  ],
-                  "nodeSpanPx": 138,
-                  "spaceAboveNodesPx": 69,
-                  "spaceBelowNodesPx": 8
+                  "nodeSpanPx": 114,
+                  "spaceAboveNodesPx": 57,
+                  "spaceBelowNodesPx": 7
                 }
               ],
-              "minimumProjectedNodeTextPx": 6,
-              "minimumProjectedNonEdgeTextPx": 6,
+              "minimumProjectedNodeTextPx": 7.2,
+              "minimumProjectedNonEdgeTextPx": 7.2,
               "minimumProjectedEdgeTextPx": 8,
-              "minimumProjectedNodeText": "unauthorized or changed",
+              "minimumProjectedNodeText": "SDK + structured results",
               "minimumProjectedNodeTextDetail": "context",
               "minimumProjectedNodeTextOwner": {
                 "kind": "node",
-                "id": "blocked"
+                "id": "tools"
               },
               "minimumRequiredNodeTextPx": 6,
               "readabilityOk": true,
@@ -1437,6 +1295,7 @@
           "contactSheet": null
         },
         "sidecars": {
+          "directory": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\programming-review",
           "receipt": "workflow.browser-check.json",
           "files": []
         }
@@ -1449,13 +1308,13 @@
   },
   "diagnostics": [],
   "evidence": {
-    "receipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.finalize.json",
-    "summaryReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.finalize-summary.json",
-    "browserCheckReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\workflow.browser-check.json"
+    "receipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\programming-review\\workflow.finalize.json",
+    "summaryReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\programming-review\\workflow.finalize-summary.json",
+    "browserCheckReceipt": "C:\\Users\\dyann\\AppData\\Local\\Temp\\arena-gpt-work\\release-check\\docs\\superpowers\\specs\\personal-arena-plugin\\programming-review\\workflow.browser-check.json"
   },
   "visualReview": "not-requested",
-  "finishedAt": "2026-10-24T18:29:45.039Z",
-  "durationMs": 12397,
+  "finishedAt": "2026-10-24T18:37:05.218Z",
+  "durationMs": 8198,
   "update": {
     "status": "current",
     "installedVersion": "3.2.0",
