@@ -36,31 +36,32 @@ def finalists(state):
     return [champion] if champion in agents else []
 
 
+def _reject_redirects(path):
+    """Reject links/junctions while allowing Windows 8.3 path spellings."""
+    for current in (path,) + tuple(path.parents):
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            continue
+        if current.is_symlink() or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise ArtifactError('symlink or redirected path: %s' % current)
+
+
 def _root(state):
     try:
         root = Path(os.path.abspath(state['dir']))
-        if root.is_symlink() or root.resolve() != root:
-            raise ArtifactError('RUN must not traverse a symlink or redirected path')
+        _reject_redirects(root)
         return root
     except (KeyError, TypeError, OSError, RuntimeError) as exc:
         raise ArtifactError('invalid RUN directory: %s' % exc)
 
 
 def _contained(path, boundary):
-    """Check lexical containment and resolved containment, rejecting redirects."""
+    """Check canonical containment without mistaking 8.3 aliases for links."""
     path = Path(os.path.abspath(str(path)))
     try:
-        path.relative_to(boundary)
-        resolved = path.resolve()
-        resolved.relative_to(boundary)
-        if resolved != path or path.is_symlink():
-            raise ArtifactError('symlink or redirected package path: %s' % path)
-        # Also reject links that point back inside the same directory.
-        current = path
-        while current != boundary:
-            if current.is_symlink():
-                raise ArtifactError('symlink in package path: %s' % current)
-            current = current.parent
+        _reject_redirects(path)
+        path.resolve().relative_to(boundary.resolve())
     except (ValueError, OSError, RuntimeError) as exc:
         raise ArtifactError('path escapes its canonical directory: %s (%s)' % (path, exc))
     return path

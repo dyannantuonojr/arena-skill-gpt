@@ -2,7 +2,7 @@
 
 Validated on 2026-10-24 before publication.
 
-- Full standard-library suite:70 tests run successfully on the Windows host;
+- Full standard-library suite:71 tests run successfully on the Windows host;
   two filesystem-symlink checks skipped because creation is not permitted here.
   Linux CI executes those checks. Tests cover the original selection/evolution
   engines, mandatory package acceptance/delivery gates, and safe all-answer export.
@@ -27,3 +27,7 @@ Unsigned receipts bind files to reported checks; they do not attest renderer ide
 or semantic truth. A tournament winner is not certification of general accuracy.
 
 The published workflow diagram is pinned to source commit b3ccf5d160d9f8bfdffbc1820f776737f4077eef; its required-output flow, all four Archify gates and exact artifact/candidate hashes were checked. Final browser interaction also verified bracket selection and both required guides/diagrams, with the user selection restored.
+
+Windows CI exposed 8.3 short directory names being mistaken for redirects. Path
+validation now checks actual links/reparse points and canonical containment. A real
+Windows short-name regression passes locally; symlink rejection remains covered.

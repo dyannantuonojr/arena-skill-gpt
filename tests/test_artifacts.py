@@ -66,6 +66,24 @@ class ArtifactTests(unittest.TestCase):
         self.assertTrue(self.art.package_valid(self.state, 'a001'))
         self.assertEqual(self.art.pending_finalists(self.state), ['a002'])
 
+    @unittest.skipUnless(__import__('os').name == 'nt', 'Windows path aliases')
+    def test_windows_short_run_path_is_not_a_redirect(self):
+        import ctypes
+        buffer = ctypes.create_unicode_buffer(32768)
+        length = ctypes.windll.kernel32.GetShortPathNameW(str(self.root), buffer, len(buffer))
+        self.assertTrue(length, 'GetShortPathNameW failed')
+        self.assertNotEqual(buffer.value.lower(), str(self.root.resolve()).lower(),
+                            'fixture must exercise a different short spelling')
+        self.state['dir'] = buffer.value
+        for aid, agent in self.state['agents'].items():
+            agent['solution'] = str(Path(buffer.value) / (aid + '.md'))
+        self.package = Path(self.art.package_dir(self.state, 'a001'))
+        for binding, name in (('specification', 'candidate.json'), ('artifact', 'diagram.html')):
+            self.receipt[binding]['path'] = str(self.package / name)
+        self.write_receipt()
+        self.accept()
+        self.assertTrue(self.art.package_valid(self.state, 'a001'))
+
     def test_finalists_require_final_round_without_a_bye(self):
         self.assertEqual(self.art.finalists(self.state), ['a001', 'a002'])
         self.state['rounds'][0]['bye'] = 'a003'
